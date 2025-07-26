@@ -1,0 +1,136 @@
+import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
+import { ChatMessage, ConversationState } from '@/types';
+
+export interface PhoneAIState extends ConversationState {
+  // Conversation state
+  conversationId: string | null;
+  isCallActive: boolean;
+  
+  // Audio states
+  isSpeaking: boolean;
+  isProcessing: boolean;
+  isWaitingToUpload: boolean;
+  
+  // Settings
+  language: string;
+  voiceId: string;
+  
+  // Actions
+  addMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
+  updateMessage: (id: string, updates: Partial<ChatMessage>) => void;
+  removeMessage: (id: string) => void;
+  clearMessages: () => void;
+  
+  setRecording: (isRecording: boolean) => void;
+  setPlaying: (isPlaying: boolean) => void;
+  setLoading: (isLoading: boolean) => void;
+  setSpeaking: (isSpeaking: boolean) => void;
+  setProcessing: (isProcessing: boolean) => void;
+  setWaitingToUpload: (isWaiting: boolean) => void;
+  
+  setCallActive: (isActive: boolean) => void;
+  setError: (error: string | null) => void;
+  
+  setLanguage: (language: string) => void;
+  setVoiceId: (voiceId: string) => void;
+  
+  startNewConversation: () => void;
+  endConversation: () => void;
+}
+
+const generateId = () => {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+};
+
+export const usePhoneAIStore = create<PhoneAIState>()(
+  devtools(
+    (set) => ({
+      // Initial state
+      messages: [],
+      isRecording: false,
+      isPlaying: false,
+      isLoading: false,
+      isSpeaking: false,
+      isProcessing: false,
+      isWaitingToUpload: false,
+      error: null,
+      
+      conversationId: null,
+      isCallActive: false,
+      
+      language: 'zh-CN',
+      voiceId: 'male-qn-qingse',
+      
+      // Message actions
+      addMessage: (messageData) => {
+        const message: ChatMessage = {
+          ...messageData,
+          id: generateId(),
+          timestamp: Date.now(),
+        };
+        
+        set((state) => ({
+          messages: [...state.messages, message],
+        }));
+      },
+      
+      updateMessage: (id, updates) => {
+        set((state) => ({
+          messages: state.messages.map((msg) =>
+            msg.id === id ? { ...msg, ...updates } : msg
+          ),
+        }));
+      },
+      
+      removeMessage: (id) => {
+        set((state) => ({
+          messages: state.messages.filter((msg) => msg.id !== id),
+        }));
+      },
+      
+      clearMessages: () => {
+        set({ messages: [] });
+      },
+      
+      // State setters
+      setRecording: (isRecording) => set({ isRecording }),
+      setPlaying: (isPlaying) => set({ isPlaying }),
+      setLoading: (isLoading) => set({ isLoading }),
+      setSpeaking: (isSpeaking) => set({ isSpeaking }),
+      setProcessing: (isProcessing) => set({ isProcessing }),
+      setWaitingToUpload: (isWaitingToUpload) => set({ isWaitingToUpload }),
+      setCallActive: (isCallActive) => set({ isCallActive }),
+      setError: (error) => set({ error }),
+      setLanguage: (language) => set({ language }),
+      setVoiceId: (voiceId) => set({ voiceId }),
+      
+      // Conversation management
+      startNewConversation: () => {
+        set({
+          conversationId: generateId(),
+          isCallActive: true,
+          messages: [],
+          error: null,
+        });
+      },
+      
+      endConversation: () => {
+        set({
+          conversationId: null,
+          isCallActive: false,
+          isRecording: false,
+          isPlaying: false,
+          isLoading: false,
+          isSpeaking: false,
+          isProcessing: false,
+          isWaitingToUpload: false,
+          error: null,
+        });
+      },
+    }),
+    {
+      name: 'phone-ai-store',
+    }
+  )
+);
