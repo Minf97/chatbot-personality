@@ -3,7 +3,8 @@ import { ttsService } from './tts';
 import { enhancedSpeechRecognitionService } from './enhanced-speech-recognition';
 import { errorHandler } from './error-handler';
 import { performanceMonitor } from './performance-monitor';
-import { KimiMessage, ChatMessage } from '@/types';
+import { getUserInfoCookie } from './user-info';
+import { KimiMessage } from '@/types';
 import { usePhoneAIStore } from './store';
 
 // 每个字符渲染的间隔时间（毫秒），调整为适合中文阅读和语音匹配的速度
@@ -144,6 +145,7 @@ export class ConversationManager {
       store.setError(userFriendlyError);
     } finally {
       store.setProcessing(false);
+      store.setSpeaking(false);
       this.isProcessingConversation = false;
     }
   }
@@ -194,7 +196,7 @@ export class ConversationManager {
       store.setPlaying(true);
 
       // 开始流式渲染
-      const messageId = store.startStreamingMessage('assistant');
+      store.startStreamingMessage('assistant');
       
       // 同时请求TTS音频
       const audioPromise = performanceMonitor.monitorAudioProcessing(
@@ -234,9 +236,12 @@ export class ConversationManager {
         store.completeStreamingMessage();
       }
     } finally {
+      // 确保状态始终被重置
       store.setSpeaking(false);
       store.setPlaying(false);
       this.currentAudioController = null;
+      // 停止任何残留的流式文本渲染
+      this.stopStreamingText();
     }
   }
 
@@ -366,6 +371,7 @@ export class ConversationManager {
       store.setError(userFriendlyError);
     } finally {
       store.setProcessing(false);
+      store.setSpeaking(false);
       this.isProcessingConversation = false;
     }
   }
@@ -411,6 +417,107 @@ export class ConversationManager {
     store.setSilenceProgress(0);
   }
 
+  public async endInterviewWithResult(): Promise<any> {
+    const store = usePhoneAIStore.getState();
+    
+    try {
+      console.log('Ending interview and generating summary...');
+      
+      // Stop voice conversation
+      this.stopVoiceConversation();
+      
+      // Set processing state for summary generation
+      store.setProcessing(true);
+      
+      // Get user info from cookies
+      const userInfo = getUserInfoCookie();
+      
+      // Filter out system messages and prepare for summary
+      const interviewMessages = store.messages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+
+      console.log('Sending messages for summary:', interviewMessages.length);
+
+      // Generate summary with user info
+      const response = await fetch('/api/interview-summary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: interviewMessages,
+          userInfo: userInfo
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate interview summary');
+      }
+
+      const summaryData = await response.json();
+      
+      // Prepare result object
+      const result = {
+        userInfo: userInfo,
+        summary: summaryData.summary,
+        messages: interviewMessages,
+        messageCount: interviewMessages.length,
+        timestamp: new Date().toISOString(),
+        dbUploadStatus: 'pending'
+      };
+      
+      // Upload data to database
+      if (userInfo && summaryData.summary) {
+        try {
+          const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              table: 'interviews',
+              data: {
+                user_name: userInfo.name,
+                user_email: userInfo.email,
+                interview_messages: JSON.stringify(interviewMessages),
+                interview_summary: summaryData.summary,
+                created_at: new Date().toISOString(),
+                message_count: interviewMessages.length
+              }
+            })
+          });
+
+          if (uploadResponse.ok) {
+            console.log('Interview data uploaded to database successfully');
+            result.dbUploadStatus = 'success';
+          } else {
+            console.error('Failed to upload interview data to database');
+            result.dbUploadStatus = 'failed';
+          }
+        } catch (uploadError) {
+          console.error('Error uploading to database:', uploadError);
+          result.dbUploadStatus = 'error';
+        }
+      }
+      
+      // End the call
+      store.endConversation();
+
+      console.log('Interview ended successfully');
+      return result;
+
+    } catch (error) {
+      console.error('Error ending interview:', error);
+      const userFriendlyError = errorHandler.getUserFriendlyMessage(error);
+      store.setError(`结束采访失败: ${userFriendlyError}`);
+      throw error;
+    } finally {
+      store.setProcessing(false);
+    }
+  }
+
   private async endInterviewAndSummarize(): Promise<void> {
     const store = usePhoneAIStore.getState();
     
@@ -423,6 +530,9 @@ export class ConversationManager {
       // Set processing state for summary generation
       store.setProcessing(true);
       
+      // Get user info from cookies
+      const userInfo = getUserInfoCookie();
+      
       // Filter out system messages and prepare for summary
       const interviewMessages = store.messages.map(msg => ({
         role: msg.role,
@@ -431,14 +541,15 @@ export class ConversationManager {
 
       console.log('Sending messages for summary:', interviewMessages.length);
 
-      // Generate summary
+      // Generate summary with user info
       const response = await fetch('/api/interview-summary', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: interviewMessages
+          messages: interviewMessages,
+          userInfo: userInfo
         })
       });
 
@@ -448,9 +559,42 @@ export class ConversationManager {
 
       const summaryData = await response.json();
       
+      // Upload data to database
+      if (userInfo && summaryData.summary) {
+        try {
+          const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              table: 'interviews',
+              data: {
+                user_name: userInfo.name,
+                user_email: userInfo.email,
+                interview_messages: JSON.stringify(interviewMessages),
+                interview_summary: summaryData.summary,
+                created_at: new Date().toISOString(),
+                message_count: interviewMessages.length
+              }
+            })
+          });
+
+          if (uploadResponse.ok) {
+            console.log('Interview data uploaded to database successfully');
+          } else {
+            console.error('Failed to upload interview data to database');
+          }
+        } catch (uploadError) {
+          console.error('Error uploading to database:', uploadError);
+        }
+      }
+      
       // 使用流式渲染显示总结
       const summaryContent = `📋 **采访总结**\n\n${summaryData.summary}`;
-      const messageId = store.startStreamingMessage('assistant');
+      // TODO: 开始上传到数据库, 将summaryData.summary 上传到数据库
+      // TODO: 数据格式是 { id: userInfo.email, bg: summaryData.summary, name: userInfo.name }
+      store.startStreamingMessage('assistant');
       await this.streamText(summaryContent);
       store.completeStreamingMessage();
 

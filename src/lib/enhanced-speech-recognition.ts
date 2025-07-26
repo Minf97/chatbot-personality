@@ -41,6 +41,11 @@ export class EnhancedSpeechRecognitionService {
   ): Promise<void> {
     const store = usePhoneAIStore.getState();
     
+    console.log('🎙️ Starting enhanced speech recognition - clearing all previous state');
+    
+    // 强力清理所有可能的残留状态
+    this.forceCleanup();
+    
     // Clear any existing timer
     this.clearSilenceTimer();
     this.clearProgressTimer();
@@ -60,15 +65,26 @@ export class EnhancedSpeechRecognitionService {
 
     return this.speechService.startListening(
       (result: SpeechRecognitionResult) => {
-        console.log('Speech result:', {
+        console.log('🗣️ Speech result received:', {
           transcript: result.transcript,
           isFinal: result.isFinal,
-          confidence: result.confidence
+          confidence: result.confidence,
+          length: result.transcript.length,
+          currentTranscript: this.currentTranscript,
+          isWaitingForSilence: this.isWaitingForSilence
         });
+
+        // 检查是否是旧的残留结果
+        if (!this.shouldContinueListening) {
+          console.log('⚠️ Ignoring speech result - not supposed to be listening');
+          return;
+        }
 
         // Update current transcript
         if (result.transcript.trim()) {
-          this.currentTranscript = result.transcript.trim();
+          const newTranscript = result.transcript.trim();
+          console.log(`📝 Updating transcript: "${this.currentTranscript}" -> "${newTranscript}"`);
+          this.currentTranscript = newTranscript;
         }
 
         // Handle speech detection - respond to both interim and final results
@@ -99,8 +115,22 @@ export class EnhancedSpeechRecognitionService {
         store.setWaitingToUpload(false);
         store.setSilenceProgress(0);
         this.isWaitingForSilence = false;
-        this.shouldContinueListening = false;
-        onError(error);
+        
+        // 不要立即停止监听，尝试重启（除非是致命错误）
+        if (error.includes('not-allowed') || error.includes('service-not-allowed')) {
+          this.shouldContinueListening = false;
+          onError(error);
+        } else {
+          // 对于其他错误（如network、aborted等），尝试重启
+          console.log('Speech recognition error, will try to restart:', error);
+          setTimeout(() => {
+            if (this.shouldContinueListening && this.currentCallbacks) {
+              console.log('Attempting to restart after error...');
+              this.startInternalListening();
+            }
+          }, 1000); // 等待1秒后重启
+          onError(error);
+        }
       },
       () => {
         onStart?.();
@@ -172,8 +202,22 @@ export class EnhancedSpeechRecognitionService {
           store.setWaitingToUpload(false);
           store.setSilenceProgress(0);
           this.isWaitingForSilence = false;
-          this.shouldContinueListening = false;
-          onError(error);
+          
+          // 不要立即停止监听，尝试重启（除非是致命错误）
+          if (error.includes('not-allowed') || error.includes('service-not-allowed')) {
+            this.shouldContinueListening = false;
+            onError(error);
+          } else {
+            // 对于其他错误（如network、aborted等），尝试重启
+            console.log('Speech recognition error (internal), will try to restart:', error);
+            setTimeout(() => {
+              if (this.shouldContinueListening) {
+                console.log('Attempting to restart after internal error...');
+                this.startInternalListening();
+              }
+            }, 1000); // 等待1秒后重启
+            onError(error);
+          }
         },
         onStart,
         () => {
@@ -259,9 +303,11 @@ export class EnhancedSpeechRecognitionService {
       onFinalResult(finalTranscript);
     } else {
       // No valid transcript, just clear waiting state
+      console.log('⚠️ Transcript too short or empty, clearing and ignoring:', this.currentTranscript);
       store.setWaitingToUpload(false);
       store.setSilenceProgress(0);
       this.isWaitingForSilence = false;
+      this.currentTranscript = ''; // 重要：清除无效的transcript
     }
   }
 
@@ -307,6 +353,34 @@ export class EnhancedSpeechRecognitionService {
 
   public getSupportedLanguages(): string[] {
     return this.speechService.getSupportedLanguages();
+  }
+
+  // 强力清理方法，确保完全重置状态
+  private forceCleanup(): void {
+    console.log('🧹 Force cleanup - clearing all speech recognition state');
+    
+    // 停止现有的语音识别
+    if (this.speechService.getIsListening()) {
+      this.speechService.abortListening();
+    }
+    
+    // 清理所有定时器
+    this.clearSilenceTimer();
+    this.clearProgressTimer();
+    
+    // 重置所有内部状态
+    this.currentTranscript = '';
+    this.isWaitingForSilence = false;
+    this.shouldContinueListening = false;
+    this.currentCallbacks = null;
+    this.currentOptions = {};
+    
+    // 重置store状态
+    const store = usePhoneAIStore.getState();
+    store.setWaitingToUpload(false);
+    store.setSilenceProgress(0);
+    
+    console.log('✅ Force cleanup completed');
   }
 }
 

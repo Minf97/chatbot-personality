@@ -100,7 +100,8 @@ export class SpeechRecognitionService {
     options: SpeechRecognitionOptions = {}
   ): Promise<void> {
     if (this.isListening) {
-      throw new Error('Already listening');
+      console.log('Speech recognition already listening, ignoring duplicate call');
+      return; // 静默返回而不是抛出错误
     }
 
     if (!this.recognition) {
@@ -161,15 +162,31 @@ export class SpeechRecognitionService {
 
   public stopListening(): void {
     if (this.recognition && this.isListening) {
+      // 清除所有事件监听器以防止残留事件
+      this.recognition.onresult = null;
+      this.recognition.onerror = null;
+      this.recognition.onstart = null;
+      this.recognition.onend = null;
+      
       this.recognition.stop();
       this.isListening = false;
+      
+      console.log('🛑 Speech recognition stopped and event listeners cleared');
     }
   }
 
   public abortListening(): void {
     if (this.recognition && this.isListening) {
+      // 清除所有事件监听器以防止残留事件
+      this.recognition.onresult = null;
+      this.recognition.onerror = null;
+      this.recognition.onstart = null;
+      this.recognition.onend = null;
+      
       this.recognition.abort();
       this.isListening = false;
+      
+      console.log('🚫 Speech recognition aborted and event listeners cleared');
     }
   }
 

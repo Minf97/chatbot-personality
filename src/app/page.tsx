@@ -1,13 +1,15 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PhoneControlButton } from '@/components/PhoneControlButton';
 import { ChatMessages } from '@/components/ChatMessages';
 import { ErrorBanner, StatusIndicator } from '@/components/ErrorBanner';
 import { DebugPanel } from '@/components/DebugPanel';
 import { MicrophoneControl } from '@/components/MicrophoneControl';
+import { UserInfoDialog } from '@/components/UserInfoDialog';
 import { usePhoneAIStore } from '@/lib/store';
 import { conversationManager } from '@/lib/conversation-manager';
+import { hasUserInfoCookie, setUserInfoCookie, UserInfo } from '@/lib/user-info';
 import { Bot, Smartphone } from 'lucide-react';
 
 export default function Home() {
@@ -28,7 +30,35 @@ export default function Home() {
     setError,
   } = usePhoneAIStore();
 
+  // 优化的调试日志 - 只在值变化时输出
+  const prevIsCallActiveRef = useRef(isCallActive);
+  const prevIsWaitingToUploadRef = useRef(isWaitingToUpload);
+
+  useEffect(() => {
+    if (prevIsCallActiveRef.current !== isCallActive) {
+      console.log(isCallActive, "isCallActive??");
+      prevIsCallActiveRef.current = isCallActive;
+    }
+  }, [isCallActive]);
+
+  useEffect(() => {
+    if (prevIsWaitingToUploadRef.current !== isWaitingToUpload) {
+      console.log(isWaitingToUpload, "isWaitingToUpload???");
+      prevIsWaitingToUploadRef.current = isWaitingToUpload;
+    }
+  }, [isWaitingToUpload]);
+
+  const [showUserInfoDialog, setShowUserInfoDialog] = useState(false);
+  const [interviewResult, setInterviewResult] = useState<any>(null);
+  const [showResult, setShowResult] = useState(false);
+
   const handleStartCall = async () => {
+    // Check if user info exists
+    if (!hasUserInfoCookie()) {
+      setShowUserInfoDialog(true);
+      return;
+    }
+
     try {
       startNewConversation();
       await conversationManager.startVoiceConversation();
@@ -36,6 +66,32 @@ export default function Home() {
       console.error('Failed to start call:', error);
       setError('启动通话失败，请检查麦克风权限');
       endConversation();
+    }
+  };
+
+  const handleUserInfoSubmit = async (userInfo: UserInfo) => {
+    setUserInfoCookie(userInfo);
+    setShowUserInfoDialog(false);
+    
+    // Now start the actual call
+    try {
+      startNewConversation();
+      await conversationManager.startVoiceConversation();
+    } catch (error) {
+      console.error('Failed to start call:', error);
+      setError('启动通话失败，请检查麦克风权限');
+      endConversation();
+    }
+  };
+
+  const handleEndInterview = async () => {
+    try {
+      const result = await conversationManager.endInterviewWithResult();
+      setInterviewResult(result);
+      setShowResult(true);
+    } catch (error) {
+      console.error('Failed to end interview:', error);
+      setError('结束采访失败');
     }
   };
 
@@ -67,15 +123,17 @@ export default function Home() {
     setError(null);
   };
 
-  // Continue listening after AI response
-  useEffect(() => {
-    if (isCallActive && !isRecording && !isProcessing && !isSpeaking && !isWaitingToUpload && isMicrophoneEnabled) {
-      conversationManager.continueListening();
-    }
-  }, [isCallActive, isRecording, isProcessing, isSpeaking, isWaitingToUpload, isMicrophoneEnabled]);
+  // Note: continueListening is now handled automatically in conversation-manager after TTS completes
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      {/* User Info Dialog */}
+      <UserInfoDialog
+        isOpen={showUserInfoDialog}
+        onSubmit={handleUserInfoSubmit}
+        onClose={() => setShowUserInfoDialog(false)}
+      />
+      
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-8">
@@ -141,9 +199,57 @@ export default function Home() {
                   disabled={isProcessing || isLoading}
                 />
               )}
+              
+              {/* End Interview Button - only show during active call */}
+              {isCallActive && (
+                <button
+                  onClick={handleEndInterview}
+                  disabled={isProcessing || isLoading}
+                  className="bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center space-x-2 shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98] disabled:transform-none"
+                >
+                  <span>🔚</span>
+                  <span>结束采访</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
+
+        {/* Result Display Modal */}
+        {showResult && interviewResult && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Overlay */}
+            <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowResult(false)} />
+            
+            {/* Modal */}
+            <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl mx-4 p-6 max-h-[80vh] overflow-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">采访结果</h2>
+                <button
+                  onClick={() => setShowResult(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <span className="text-2xl">×</span>
+                </button>
+              </div>
+              
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 overflow-auto">
+                <pre className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                  {JSON.stringify(interviewResult, null, 2)}
+                </pre>
+              </div>
+              
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => setShowResult(false)}
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg"
+                >
+                  关闭
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Features */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">

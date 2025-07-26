@@ -163,20 +163,46 @@ export const usePhoneAIStore = create<PhoneAIState>()(
         });
       },
       
-      // State setters
-      setRecording: (isRecording) => set({ isRecording }),
-      setPlaying: (isPlaying) => set({ isPlaying }),
-      setLoading: (isLoading) => set({ isLoading }),
-      setSpeaking: (isSpeaking) => set({ isSpeaking }),
-      setProcessing: (isProcessing) => set({ isProcessing }),
-      setWaitingToUpload: (isWaitingToUpload) => set({ isWaitingToUpload }),
-      setSilenceProgress: (silenceProgress) => set({ silenceProgress }),
-      setMicrophoneEnabled: (isMicrophoneEnabled) => set({ isMicrophoneEnabled }),
-      setPendingAIMessage: (pendingAIMessage) => set({ pendingAIMessage }),
-      setCallActive: (isCallActive) => set({ isCallActive }),
-      setError: (error) => set({ error }),
-      setLanguage: (language) => set({ language }),
-      setVoiceId: (voiceId) => set({ voiceId }),
+      // State setters - optimized to prevent unnecessary re-renders
+      setRecording: (isRecording) => set((state) => 
+        state.isRecording === isRecording ? state : { isRecording }
+      ),
+      setPlaying: (isPlaying) => set((state) => 
+        state.isPlaying === isPlaying ? state : { isPlaying }
+      ),
+      setLoading: (isLoading) => set((state) => 
+        state.isLoading === isLoading ? state : { isLoading }
+      ),
+      setSpeaking: (isSpeaking) => set((state) => 
+        state.isSpeaking === isSpeaking ? state : { isSpeaking }
+      ),
+      setProcessing: (isProcessing) => set((state) => 
+        state.isProcessing === isProcessing ? state : { isProcessing }
+      ),
+      setWaitingToUpload: (isWaitingToUpload) => set((state) => 
+        state.isWaitingToUpload === isWaitingToUpload ? state : { isWaitingToUpload }
+      ),
+      setSilenceProgress: (silenceProgress) => set((state) => 
+        state.silenceProgress === silenceProgress ? state : { silenceProgress }
+      ),
+      setMicrophoneEnabled: (isMicrophoneEnabled) => set((state) => 
+        state.isMicrophoneEnabled === isMicrophoneEnabled ? state : { isMicrophoneEnabled }
+      ),
+      setPendingAIMessage: (pendingAIMessage) => set((state) => 
+        state.pendingAIMessage === pendingAIMessage ? state : { pendingAIMessage }
+      ),
+      setCallActive: (isCallActive) => set((state) => 
+        state.isCallActive === isCallActive ? state : { isCallActive }
+      ),
+      setError: (error) => set((state) => 
+        state.error === error ? state : { error }
+      ),
+      setLanguage: (language) => set((state) => 
+        state.language === language ? state : { language }
+      ),
+      setVoiceId: (voiceId) => set((state) => 
+        state.voiceId === voiceId ? state : { voiceId }
+      ),
       
       // Conversation management
       startNewConversation: () => {
