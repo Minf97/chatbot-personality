@@ -100,12 +100,12 @@ export class SpeechRecognitionService {
     options: SpeechRecognitionOptions = {}
   ): Promise<void> {
     if (this.isListening) {
-      console.log('Speech recognition already listening, ignoring duplicate call');
+      // console.log('Speech recognition already listening, ignoring duplicate call');
       return; // 静默返回而不是抛出错误
     }
 
     // 🔧 重要修复：每次都创建新的识别实例以避免缓冲问题
-    console.log('🔄 Creating fresh SpeechRecognition instance to avoid buffer issues');
+    // console.log('🔄 Creating fresh SpeechRecognition instance to avoid buffer issues');
     this.recognition = null; // 清除旧实例
     this.initializeRecognition(options);
 
@@ -163,7 +163,7 @@ export class SpeechRecognitionService {
 
   public stopListening(): void {
     if (this.recognition && this.isListening) {
-      console.log('🛑 Stopping speech recognition and destroying instance');
+      // console.log('🛑 Stopping speech recognition and destroying instance');
       
       // 清除所有事件监听器以防止残留事件
       this.recognition.onresult = null;
@@ -177,13 +177,13 @@ export class SpeechRecognitionService {
       // 🔧 重要：完全销毁实例避免缓冲问题
       this.recognition = null;
       
-      console.log('✅ Speech recognition instance destroyed');
+      // console.log('✅ Speech recognition instance destroyed');
     }
   }
 
   public abortListening(): void {
     if (this.recognition && this.isListening) {
-      console.log('🚫 Aborting speech recognition and destroying instance');
+      // console.log('🚫 Aborting speech recognition and destroying instance');
       
       // 清除所有事件监听器以防止残留事件
       this.recognition.onresult = null;
@@ -197,7 +197,7 @@ export class SpeechRecognitionService {
       // 🔧 重要：完全销毁实例避免缓冲问题
       this.recognition = null;
       
-      console.log('✅ Speech recognition instance destroyed');
+      // console.log('✅ Speech recognition instance destroyed');
     }
   }
 

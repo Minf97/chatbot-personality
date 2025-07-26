@@ -52,11 +52,11 @@ export class PerformanceMonitor {
     // Log performance metrics for development
     if (process.env.NODE_ENV === 'development') {
       const color = duration > 1000 ? 'red' : duration > 500 ? 'orange' : 'green';
-      console.log(
-        `%c[Performance] ${name}: ${duration.toFixed(2)}ms`,
-        `color: ${color}; font-weight: bold;`,
-        metric.metadata
-      );
+      // console.log(
+      //   `%c[Performance] ${name}: ${duration.toFixed(2)}ms`,
+      //   `color: ${color}; font-weight: bold;`,
+      //   metric.metadata
+      // );
     }
 
     // Clean up the metric

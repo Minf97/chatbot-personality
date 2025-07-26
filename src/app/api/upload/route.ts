@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Table and data are required' }, { status: 400 });
     }
 
-    console.log('Uploading data to table:', table, 'with data:', data);
+    // console.log('Uploading data to table:', table, 'with data:', data);
 
     // Handle agents table
     if (table === 'agents') {

@@ -16,7 +16,7 @@ export class TTSService {
     }
 
     try {
-      console.log('TTS Service: Sending request for text:', text.substring(0, 50) + '...');
+      // console.log('TTS Service: Sending request for text:', text.substring(0, 50) + '...');
       
       const response = await axios.post('/api/tts', {
         text: text.trim()
@@ -28,12 +28,12 @@ export class TTSService {
         }
       });
 
-      console.log('TTS Service: Received response:', {
-        status: response.status,
-        dataType: typeof response.data,
-        dataSize: response.data?.size || 0,
-        hasData: !!response.data
-      });
+      // console.log('TTS Service: Received response:', {
+      //   status: response.status,
+      //   dataType: typeof response.data,
+      //   dataSize: response.data?.size || 0,
+      //   hasData: !!response.data
+      // });
 
       // More comprehensive check for valid audio data
       if (!response.data) {
@@ -51,10 +51,10 @@ export class TTSService {
         throw new Error('Empty audio response from TTS service');
       }
 
-      console.log('TTS Service: Audio blob created successfully:', {
-        size: response.data.size,
-        type: response.data.type
-      });
+      // console.log('TTS Service: Audio blob created successfully:', {
+      //   size: response.data.size,
+      //   type: response.data.type
+      // });
 
       return response.data;
     } catch (error) {
@@ -85,10 +85,10 @@ export class TTSService {
       throw new Error('Invalid audio data');
     }
 
-    console.log('TTS Service: Starting audio playback:', {
-      size: audioBlob.size,
-      type: audioBlob.type
-    });
+    // console.log('TTS Service: Starting audio playback:', {
+    //   size: audioBlob.size,
+    //   type: audioBlob.type
+    // });
 
     return new Promise((resolve, reject) => {
       const audioUrl = URL.createObjectURL(audioBlob);
@@ -107,7 +107,7 @@ export class TTSService {
       const handleSuccess = () => {
         clearTimeout(timeoutId);
         cleanup();
-        console.log('TTS Service: Audio playback completed successfully');
+        // console.log('TTS Service: Audio playback completed successfully');
         resolve();
       };
 
@@ -124,11 +124,11 @@ export class TTSService {
       audio.onerror = () => handleError('Audio playback failed');
       
       audio.onloadstart = () => {
-        console.log('TTS Service: Audio loading started');
+        // console.log('TTS Service: Audio loading started');
       };
 
       audio.oncanplaythrough = () => {
-        console.log('TTS Service: Audio can play through');
+        // console.log('TTS Service: Audio can play through');
       };
 
       // Start playback

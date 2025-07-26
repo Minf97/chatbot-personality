@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
       stream: false
     };
 
-    console.log('Generating interview summary...');
+    // console.log('Generating interview summary...');
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
       stream: false
     };
 
-    console.log('Generating tags from summary...');
+    // console.log('Generating tags from summary...');
 
     const tagsResponse = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',

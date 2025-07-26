@@ -53,7 +53,7 @@ export class EnhancedSpeechRecognitionService {
     this.sessionId = Date.now().toString(36) + Math.random().toString(36).substr(2);
     const currentSessionId = this.sessionId;
     
-    console.log('🎙️ Starting enhanced speech recognition - Session ID:', currentSessionId);
+    // console.log('🎙️ Starting enhanced speech recognition - Session ID:', currentSessionId);
     
     // 强力清理所有可能的残留状态
     this.forceCleanup();
@@ -79,34 +79,34 @@ export class EnhancedSpeechRecognitionService {
       (result: SpeechRecognitionResult) => {
         // 🔧 验证会话ID，过滤旧会话的结果
         if (this.sessionId !== currentSessionId) {
-          console.log('⚠️ Ignoring speech result from old session:', {
-            currentSession: currentSessionId,
-            resultSession: this.sessionId,
-            transcript: result.transcript
-          });
+          // console.log('⚠️ Ignoring speech result from old session:', {
+          //   currentSession: currentSessionId,
+          //   resultSession: this.sessionId,
+          //   transcript: result.transcript
+          // });
           return;
         }
         
-        console.log('🗣️ Speech result received:', {
-          sessionId: currentSessionId,
-          transcript: result.transcript,
-          isFinal: result.isFinal,
-          confidence: result.confidence,
-          length: result.transcript.length,
-          currentTranscript: this.currentTranscript,
-          isWaitingForSilence: this.isWaitingForSilence
-        });
+        // console.log('🗣️ Speech result received:', {
+        //   sessionId: currentSessionId,
+        //   transcript: result.transcript,
+        //   isFinal: result.isFinal,
+        //   confidence: result.confidence,
+        //   length: result.transcript.length,
+        //   currentTranscript: this.currentTranscript,
+        //   isWaitingForSilence: this.isWaitingForSilence
+        // });
 
         // 检查是否是旧的残留结果
         if (!this.shouldContinueListening) {
-          console.log('⚠️ Ignoring speech result - not supposed to be listening');
+          // console.log('⚠️ Ignoring speech result - not supposed to be listening');
           return;
         }
 
         // Update current transcript
         if (result.transcript.trim()) {
           const newTranscript = result.transcript.trim();
-          console.log(`📝 Updating transcript: "${this.currentTranscript}" -> "${newTranscript}"`);
+          // console.log(`📝 Updating transcript: "${this.currentTranscript}" -> "${newTranscript}"`);
           this.currentTranscript = newTranscript;
         }
 
@@ -121,14 +121,14 @@ export class EnhancedSpeechRecognitionService {
           if (!this.isWaitingForSilence && this.currentTranscript) {
             this.isWaitingForSilence = true;
             store.setWaitingToUpload(true);
-            console.log('Started waiting for silence, transcript:', this.currentTranscript);
+            // console.log('Started waiting for silence, transcript:', this.currentTranscript);
           }
           
           // Special handling for final results - should also trigger waiting state
           if (result.isFinal && !this.isWaitingForSilence) {
             this.isWaitingForSilence = true;
             store.setWaitingToUpload(true);
-            console.log('Final result detected, starting silence wait:', this.currentTranscript);
+            // console.log('Final result detected, starting silence wait:', this.currentTranscript);
           }
         }
       },
@@ -145,10 +145,10 @@ export class EnhancedSpeechRecognitionService {
           onError(error);
         } else {
           // 对于其他错误（如network、aborted等），尝试重启
-          console.log('Speech recognition error, will try to restart:', error);
+          // console.log('Speech recognition error, will try to restart:', error);
           setTimeout(() => {
             if (this.shouldContinueListening && this.currentCallbacks) {
-              console.log('Attempting to restart after error...');
+              // console.log('Attempting to restart after error...');
               this.startInternalListening();
             }
           }, 1000); // 等待1秒后重启
@@ -159,10 +159,10 @@ export class EnhancedSpeechRecognitionService {
         onStart?.();
       },
       () => {
-        console.log('Enhanced speech recognition ended');
+        // console.log('Enhanced speech recognition ended');
         // If we should continue listening and haven't been manually stopped, restart
         if (this.shouldContinueListening && !this.isWaitingForSilence) {
-          console.log('Restarting speech recognition to maintain continuous listening');
+          // console.log('Restarting speech recognition to maintain continuous listening');
           setTimeout(() => {
             if (this.shouldContinueListening && this.currentCallbacks) {
               this.startInternalListening();
@@ -189,11 +189,11 @@ export class EnhancedSpeechRecognitionService {
     try {
       await this.speechService.startListening(
         (result: SpeechRecognitionResult) => {
-          console.log('Speech result:', {
-            transcript: result.transcript,
-            isFinal: result.isFinal,
-            confidence: result.confidence
-          });
+          // console.log('Speech result:', {
+          //   transcript: result.transcript,
+          //   isFinal: result.isFinal,
+          //   confidence: result.confidence
+          // });
 
           if (result.transcript.trim()) {
             this.currentTranscript = result.transcript.trim();
@@ -208,13 +208,13 @@ export class EnhancedSpeechRecognitionService {
             if (!this.isWaitingForSilence && this.currentTranscript) {
               this.isWaitingForSilence = true;
               store.setWaitingToUpload(true);
-              console.log('Started waiting for silence, transcript:', this.currentTranscript);
+              // console.log('Started waiting for silence, transcript:', this.currentTranscript);
             }
             
             if (result.isFinal && !this.isWaitingForSilence) {
               this.isWaitingForSilence = true;
               store.setWaitingToUpload(true);
-              console.log('Final result detected, starting silence wait:', this.currentTranscript);
+              // console.log('Final result detected, starting silence wait:', this.currentTranscript);
             }
           }
         },
@@ -232,10 +232,10 @@ export class EnhancedSpeechRecognitionService {
             onError(error);
           } else {
             // 对于其他错误（如network、aborted等），尝试重启
-            console.log('Speech recognition error (internal), will try to restart:', error);
+            // console.log('Speech recognition error (internal), will try to restart:', error);
             setTimeout(() => {
               if (this.shouldContinueListening) {
-                console.log('Attempting to restart after internal error...');
+                // console.log('Attempting to restart after internal error...');
                 this.startInternalListening();
               }
             }, 1000); // 等待1秒后重启
@@ -244,9 +244,9 @@ export class EnhancedSpeechRecognitionService {
         },
         onStart,
         () => {
-          console.log('Enhanced speech recognition ended (internal)');
+          // console.log('Enhanced speech recognition ended (internal)');
           if (this.shouldContinueListening && !this.isWaitingForSilence) {
-            console.log('Restarting speech recognition to maintain continuous listening (internal)');
+            // console.log('Restarting speech recognition to maintain continuous listening (internal)');
             setTimeout(() => {
               if (this.shouldContinueListening) {
                 this.startInternalListening();
@@ -275,7 +275,7 @@ export class EnhancedSpeechRecognitionService {
     // 🔧 捕获当前transcript作为这次定时器的目标
     const targetTranscript = this.currentTranscript;
     
-    console.log('⏱️ Starting silence timer for transcript:', targetTranscript);
+    // console.log('⏱️ Starting silence timer for transcript:', targetTranscript);
     
     // Start progress timer for UI updates
     this.progressTimer = setInterval(() => {
@@ -290,11 +290,11 @@ export class EnhancedSpeechRecognitionService {
     
     // Start silence timer
     this.silenceTimer = setTimeout(() => {
-      console.log('⏰ Silence timeout reached, checking transcript validity:', {
-        targetTranscript,
-        currentTranscript: this.currentTranscript,
-        isStillWaiting: this.isWaitingForSilence
-      });
+      // console.log('⏰ Silence timeout reached, checking transcript validity:', {
+      //   targetTranscript,
+      //   currentTranscript: this.currentTranscript,
+      //   isStillWaiting: this.isWaitingForSilence
+      // });
       
       // 🔧 重要检查：只有当前transcript与目标transcript一致时才处理
       if (this.currentTranscript === targetTranscript && this.isWaitingForSilence) {
@@ -302,7 +302,7 @@ export class EnhancedSpeechRecognitionService {
         store.setSilenceProgress(0);
         callback();
       } else {
-        console.log('⚠️ Transcript changed or no longer waiting, ignoring timeout');
+        // console.log('⚠️ Transcript changed or no longer waiting, ignoring timeout');
         this.clearProgressTimer();
         store.setSilenceProgress(0);
       }
@@ -328,13 +328,13 @@ export class EnhancedSpeechRecognitionService {
     
     // 🔧 重要修复：增加会话验证，确保只处理当前会话的transcript
     if (!this.isWaitingForSilence) {
-      console.log('⚠️ Not waiting for silence, ignoring stale transcript:', this.currentTranscript);
+      // console.log('⚠️ Not waiting for silence, ignoring stale transcript:', this.currentTranscript);
       this.currentTranscript = '';
       return;
     }
     
     if (this.currentTranscript && this.currentTranscript.length >= this.MIN_TRANSCRIPT_LENGTH) {
-      console.log('📤 Processing final transcript:', this.currentTranscript);
+      // console.log('📤 Processing final transcript:', this.currentTranscript);
       
       // Clear waiting state and progress
       store.setWaitingToUpload(false);
@@ -348,7 +348,7 @@ export class EnhancedSpeechRecognitionService {
       onFinalResult(finalTranscript);
     } else {
       // No valid transcript, just clear waiting state
-      console.log('⚠️ Transcript too short or empty, clearing and ignoring:', this.currentTranscript);
+      // console.log('⚠️ Transcript too short or empty, clearing and ignoring:', this.currentTranscript);
       store.setWaitingToUpload(false);
       store.setSilenceProgress(0);
       this.isWaitingForSilence = false;
@@ -402,7 +402,7 @@ export class EnhancedSpeechRecognitionService {
 
   // 强力清理方法，确保完全重置状态
   private forceCleanup(): void {
-    console.log('🧹 Force cleanup - clearing all speech recognition state');
+    // console.log('🧹 Force cleanup - clearing all speech recognition state');
     
     // 停止现有的语音识别
     if (this.speechService.getIsListening()) {
@@ -425,7 +425,7 @@ export class EnhancedSpeechRecognitionService {
     store.setWaitingToUpload(false);
     store.setSilenceProgress(0);
     
-    console.log('✅ Force cleanup completed - all state cleared');
+    // console.log('✅ Force cleanup completed - all state cleared');
   }
 }
 

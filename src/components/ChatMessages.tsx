@@ -20,7 +20,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message }) => 
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
-      <div className={`flex max-w-[80%] ${isUser ? 'flex-row-reverse' : 'flex-row'} items-start space-x-2`}>
+      <div className={`flex max-w-[80%] ${isUser ? 'flex-row-reverse gap-1' : 'flex-row'} items-start space-x-2`}>
         {/* Avatar */}
         <div className={`
           flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center
@@ -94,7 +94,7 @@ export const StreamingChatMessage: React.FC<StreamingChatMessageProps> = ({
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}>
       <div
         className={`flex max-w-[80%] ${
-          isUser ? "flex-row-reverse" : "flex-row"
+          isUser ? "flex-row-reverse gap-1" : "flex-row"
         } items-start space-x-2`}
       >
         {/* Avatar */}

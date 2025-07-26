@@ -34,13 +34,13 @@ export class ConversationManager {
 
     // Check if microphone is enabled
     if (!store.isMicrophoneEnabled) {
-      console.log('Microphone is disabled, skipping voice conversation start');
+      // // console.log('Microphone is disabled, skipping voice conversation start');
       return;
     }
 
     // Check if already listening to prevent duplicate calls
     if (enhancedSpeechRecognitionService.getIsListening()) {
-      console.log('Already listening, skipping duplicate start');
+      // // console.log('Already listening, skipping duplicate start');
       return;
     }
 
@@ -52,7 +52,7 @@ export class ConversationManager {
         () => enhancedSpeechRecognitionService.startListening(
           (transcript) => {
             // Handle final speech result with 4-second delay
-            console.log('Received final transcript after 4-second delay:', transcript);
+            // // console.log('Received final transcript after 4-second delay:', transcript);
             this.handleUserSpeech(transcript);
           },
           (error) => {
@@ -64,12 +64,12 @@ export class ConversationManager {
           },
           () => {
             store.setRecording(true);
-            console.log('Enhanced speech recognition started');
+            // // console.log('Enhanced speech recognition started');
           },
           () => {
             store.setRecording(false);
             store.setWaitingToUpload(false);
-            console.log('Enhanced speech recognition ended');
+            // // console.log('Enhanced speech recognition ended');
           },
           {
             language: store.language,
@@ -132,10 +132,10 @@ export class ConversationManager {
 
         // If </end> marker was found, end the interview and generate summary
         if (hasEndMarker) {
-          console.log('Interview end marker detected, stopping recording and generating summary...');
+          // // console.log('Interview end marker detected, stopping recording and generating summary...');
           
           // 🔧 重要修复：AI结束采访时立即停止录音功能
-          console.log('🛑 Interview ended by AI - stopping all recording activities');
+          // // console.log('🛑 Interview ended by AI - stopping all recording activities');
           enhancedSpeechRecognitionService.stopListening();
           store.setRecording(false);
           store.setWaitingToUpload(false);
@@ -203,7 +203,7 @@ export class ConversationManager {
     const hasEndMarker = text.includes('</end>');
     
     // 🔧 重要修复：TTS开始前停止语音识别，防止录入AI声音
-    console.log('🔇 Stopping speech recognition before TTS');
+    // // console.log('🔇 Stopping speech recognition before TTS');
     enhancedSpeechRecognitionService.stopListening();
     
     try {
@@ -233,7 +233,7 @@ export class ConversationManager {
           () => ttsService.playAudio(audioBlob),
           'audio-playback'
         );
-        console.log('🎵 TTS playback completed');
+        // // console.log('🎵 TTS playback completed');
       }
       
       // 确保文本流式渲染已完成
@@ -261,10 +261,10 @@ export class ConversationManager {
       
       // 🔧 重要修复：如果包含结束标记，不要重新启动录音
       if (hasEndMarker) {
-        console.log('🛑 End marker detected in TTS - not restarting listening');
+        // // console.log('🛑 End marker detected in TTS - not restarting listening');
       } else {
         // 🔧 重要修复：TTS完成后，等待更长时间再重新开始监听，确保完全清理
-        console.log('🎵 TTS and streaming completed, waiting 800ms before restarting listening...');
+        // // console.log('🎵 TTS and streaming completed, waiting 800ms before restarting listening...');
         setTimeout(() => {
           if (!this.isProcessingConversation) {
             this.continueListening();
@@ -295,7 +295,7 @@ export class ConversationManager {
         typingInterval = Math.max(20, STREAM_TYPING_INTERVAL - (textLength / 20));
       }
       
-      console.log(`Text length: ${textLength}, typing interval: ${typingInterval}ms`);
+      // // console.log(`Text length: ${textLength}, typing interval: ${typingInterval}ms`);
       
       // 中文标点符号列表，这些符号后会有短暂停顿
       const pauseCharacters = ['。', '，', '；', '！', '？', '.', ',', ';', '!', '?'];
@@ -412,13 +412,13 @@ export class ConversationManager {
   public async continueListening(): Promise<void> {
     const store = usePhoneAIStore.getState();
     
-    console.log('🔄 continueListening called - checking conditions:', {
-      isCallActive: store.isCallActive,
-      isRecording: store.isRecording,
-      isProcessingConversation: this.isProcessingConversation,
-      isMicrophoneEnabled: store.isMicrophoneEnabled,
-      isListening: enhancedSpeechRecognitionService.getIsListening()
-    });
+    // // console.log('🔄 continueListening called - checking conditions:', {
+    //   isCallActive: store.isCallActive,
+    //   isRecording: store.isRecording,
+    //   isProcessingConversation: this.isProcessingConversation,
+    //   isMicrophoneEnabled: store.isMicrophoneEnabled,
+    //   isListening: enhancedSpeechRecognitionService.getIsListening()
+    // });
     
     // 🔧 重要修复：增加更严格的检查，防止重复调用
     if (!store.isCallActive || 
@@ -426,7 +426,7 @@ export class ConversationManager {
         this.isProcessingConversation || 
         !store.isMicrophoneEnabled ||
         enhancedSpeechRecognitionService.getIsListening()) {
-      console.log('⚠️ Conditions not met for continueListening, skipping');
+      // // console.log('⚠️ Conditions not met for continueListening, skipping');
       return;
     }
     
@@ -439,10 +439,10 @@ export class ConversationManager {
           currentStore.isMicrophoneEnabled &&
           !enhancedSpeechRecognitionService.getIsListening() &&
           !this.isProcessingConversation) {
-        console.log('🎙️ Starting voice conversation after delay');
+        // // console.log('🎙️ Starting voice conversation after delay');
         this.startVoiceConversation();
       } else {
-        console.log('⚠️ Conditions changed during delay, not starting voice conversation');
+        // // console.log('⚠️ Conditions changed during delay, not starting voice conversation');
       }
     }, 1000);
   }
@@ -474,7 +474,7 @@ export class ConversationManager {
     const store = usePhoneAIStore.getState();
     
     try {
-      console.log('Ending interview and generating summary...');
+      // // console.log('Ending interview and generating summary...');
       
       // Stop voice conversation
       this.stopVoiceConversation();
@@ -491,7 +491,7 @@ export class ConversationManager {
         content: msg.content
       }));
 
-      console.log('Sending messages for summary:', interviewMessages.length);
+      // // console.log('Sending messages for summary:', interviewMessages.length);
 
       // Generate summary with user info
       const response = await fetch('/api/interview-summary', {
@@ -521,14 +521,14 @@ export class ConversationManager {
         dbUploadStatus: 'pending'
       };
 
-      console.log(summaryData.tags, "summaryData.tags");
+      // // console.log(summaryData.tags, "summaryData.tags");
       
       
       // Upload data to database
       if (userInfo && summaryData.summary) {
         try {
           // 只上传到 agents 表，不需要 interviews 表
-          console.log('Uploading summary to agents table');
+          // // console.log('Uploading summary to agents table');
           const uploadResponse = await fetch('/api/upload', {
             method: 'POST',
             headers: {
@@ -547,7 +547,7 @@ export class ConversationManager {
           });
 
           if (uploadResponse.ok) {
-            console.log('Agent data uploaded to database successfully');
+            // // console.log('Agent data uploaded to database successfully');
             result.dbUploadStatus = 'success';
           } else {
             console.error('Failed to upload agent data to database');
@@ -562,7 +562,7 @@ export class ConversationManager {
       // End the call
       store.endConversation();
 
-      console.log('Interview ended successfully');
+      // // console.log('Interview ended successfully');
       return result;
 
     } catch (error) {
@@ -577,9 +577,11 @@ export class ConversationManager {
 
   private async endInterviewAndSummarize(): Promise<void> {
     const store = usePhoneAIStore.getState();
+    store.setWaitingToUpload(false);
+    store.setRecording(false);
     
     try {
-      console.log('Ending interview and generating summary...');
+      // // console.log('Ending interview and generating summary...');
       
       // Stop voice conversation
       this.stopVoiceConversation();
@@ -596,7 +598,7 @@ export class ConversationManager {
         content: msg.content
       }));
 
-      console.log('Sending messages for summary:', interviewMessages.length);
+      // // console.log('Sending messages for summary:', interviewMessages.length);
 
       // Generate summary with user info
       const response = await fetch('/api/interview-summary', {
@@ -617,12 +619,12 @@ export class ConversationManager {
       const summaryData = await response.json();
       
       // 使用流式渲染显示总结
-      const summaryContent = `📋 **采访总结**\n\n${summaryData.summary}`;
+      // const summaryContent = `📋 **采访总结**\n\n${summaryData.summary}`;
       
       // 🔧 上传总结数据到数据库 - 使用指定的数据格式
       if (userInfo && summaryData.summary) {
         try {
-          console.log('Uploading summary to database with format: { email: email, bg: summary, name: name }');
+          // // console.log('Uploading summary to database with format: { email: email, bg: summary, name: name }');
           const summaryUploadResponse = await fetch('/api/upload', {
             method: 'POST',
             headers: {
@@ -635,13 +637,14 @@ export class ConversationManager {
                 bg: summaryData.summary,
                 name: userInfo.name,
                 tags: summaryData.tags,
+                chatbot_history:interviewMessages,
                 created_at: new Date().toISOString()
               }
             })
           });
 
           if (summaryUploadResponse.ok) {
-            console.log('Summary data uploaded to database successfully');
+            // // console.log('Summary data uploaded to database successfully');
           } else {
             console.error('Failed to upload summary data to database');
           }
@@ -651,13 +654,14 @@ export class ConversationManager {
       }
       
       store.startStreamingMessage('assistant');
-      await this.streamText(summaryContent);
+      // await this.streamText(summaryContent);
+      await this.streamText("采访结束，感谢你的时间，再见")
       store.completeStreamingMessage();
 
       // End the call
       store.endConversation();
 
-      console.log('Interview summary generated successfully');
+      // // console.log('Interview summary generated successfully');
 
     } catch (error) {
       console.error('Error generating interview summary:', error);

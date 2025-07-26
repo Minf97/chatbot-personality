@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    console.log('TTS Request:', { 
+    // console.log('TTS Request:', { 
       text: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
       textLength: text.length 
     });
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(ttsRequest)
     });
 
-    console.log('TTS API Response Status:', response.status, response.statusText);
+    // console.log('TTS API Response Status:', response.status, response.statusText);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     // Handle non-streaming response
     if (!ttsRequest.stream) {
       const responseData = await response.json();
-      console.log('TTS Non-stream Response:', {
+      // console.log('TTS Non-stream Response:', {
         hasData: !!responseData.data,
         hasAudio: !!(responseData.data && responseData.data.audio),
         audioLength: responseData.data?.audio?.length || 0
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       }
 
       const audioBytes = Buffer.from(responseData.data.audio, 'hex');
-      console.log('TTS Success (non-stream):', { audioLength: audioBytes.length });
+      // console.log('TTS Success (non-stream):', { audioLength: audioBytes.length });
 
       return new NextResponse(audioBytes, {
         headers: {
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
               
               // Log the data structure for debugging
               if (process.env.NODE_ENV === 'development') {
-                console.log('TTS Stream Data:', {
+                // console.log('TTS Stream Data:', {
                   hasData: !!data.data,
                   hasAudio: !!(data.data && data.data.audio),
                   hasExtraInfo: !!data.extra_info,
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
       reader.releaseLock();
     }
 
-    console.log('TTS Processing Complete:', {
+    // console.log('TTS Processing Complete:', {
       chunksCount: audioChunks.length,
       totalBytes: audioChunks.reduce((sum, chunk) => sum + chunk.length, 0)
     });
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
       offset += chunk.length;
     }
 
-    console.log('TTS Success (stream):', { audioLength: combinedAudio.length });
+    // console.log('TTS Success (stream):', { audioLength: combinedAudio.length });
 
     return new NextResponse(combinedAudio, {
       headers: {
