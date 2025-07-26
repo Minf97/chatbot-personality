@@ -7,6 +7,9 @@ export class EnhancedSpeechRecognitionService {
   private progressTimer: NodeJS.Timeout | null = null;
   private currentTranscript: string = '';
   private isWaitingForSilence = false;
+  private shouldContinueListening = false; // Track if we should restart after end
+  private currentCallbacks: any = null; // Store callbacks for restart
+  private currentOptions: SpeechRecognitionOptions = {};
   private static instance: EnhancedSpeechRecognitionService;
   
   // Configuration
@@ -40,8 +43,14 @@ export class EnhancedSpeechRecognitionService {
     
     // Clear any existing timer
     this.clearSilenceTimer();
+    this.clearProgressTimer();
     this.currentTranscript = '';
     this.isWaitingForSilence = false;
+    this.shouldContinueListening = true; // Set flag to continue listening
+
+    // Store callbacks and options for potential restarts
+    this.currentCallbacks = { onFinalResult, onError, onStart, onEnd };
+    this.currentOptions = options;
 
     const enhancedOptions = {
       ...options,
@@ -62,9 +71,9 @@ export class EnhancedSpeechRecognitionService {
           this.currentTranscript = result.transcript.trim();
         }
 
-        // Handle speech detection
+        // Handle speech detection - respond to both interim and final results
         if (result.transcript.trim() && result.transcript.length >= this.MIN_TRANSCRIPT_LENGTH) {
-          // Reset the silence timer whenever we get speech
+          // Reset the silence timer whenever we get speech (both interim and final)
           this.resetSilenceTimer(() => {
             this.processFinalTranscript(onFinalResult);
           });
@@ -75,25 +84,117 @@ export class EnhancedSpeechRecognitionService {
             store.setWaitingToUpload(true);
             console.log('Started waiting for silence, transcript:', this.currentTranscript);
           }
+          
+          // Special handling for final results - should also trigger waiting state
+          if (result.isFinal && !this.isWaitingForSilence) {
+            this.isWaitingForSilence = true;
+            store.setWaitingToUpload(true);
+            console.log('Final result detected, starting silence wait:', this.currentTranscript);
+          }
         }
       },
       (error: string) => {
         this.clearSilenceTimer();
+        this.clearProgressTimer();
         store.setWaitingToUpload(false);
+        store.setSilenceProgress(0);
         this.isWaitingForSilence = false;
+        this.shouldContinueListening = false;
         onError(error);
       },
       () => {
         onStart?.();
       },
       () => {
-        this.clearSilenceTimer();
-        store.setWaitingToUpload(false);
-        this.isWaitingForSilence = false;
-        onEnd?.();
+        console.log('Enhanced speech recognition ended');
+        // If we should continue listening and haven't been manually stopped, restart
+        if (this.shouldContinueListening && !this.isWaitingForSilence) {
+          console.log('Restarting speech recognition to maintain continuous listening');
+          setTimeout(() => {
+            if (this.shouldContinueListening && this.currentCallbacks) {
+              this.startInternalListening();
+            }
+          }, 100);
+        } else {
+          onEnd?.();
+        }
       },
       enhancedOptions
     );
+  }
+
+  private async startInternalListening(): Promise<void> {
+    if (!this.currentCallbacks || !this.shouldContinueListening) return;
+    
+    const { onFinalResult, onError, onStart, onEnd } = this.currentCallbacks;
+    const enhancedOptions = {
+      ...this.currentOptions,
+      continuous: true,
+      interimResults: true,
+    };
+
+    try {
+      await this.speechService.startListening(
+        (result: SpeechRecognitionResult) => {
+          console.log('Speech result:', {
+            transcript: result.transcript,
+            isFinal: result.isFinal,
+            confidence: result.confidence
+          });
+
+          if (result.transcript.trim()) {
+            this.currentTranscript = result.transcript.trim();
+          }
+
+          if (result.transcript.trim() && result.transcript.length >= this.MIN_TRANSCRIPT_LENGTH) {
+            this.resetSilenceTimer(() => {
+              this.processFinalTranscript(onFinalResult);
+            });
+
+            const store = usePhoneAIStore.getState();
+            if (!this.isWaitingForSilence && this.currentTranscript) {
+              this.isWaitingForSilence = true;
+              store.setWaitingToUpload(true);
+              console.log('Started waiting for silence, transcript:', this.currentTranscript);
+            }
+            
+            if (result.isFinal && !this.isWaitingForSilence) {
+              this.isWaitingForSilence = true;
+              store.setWaitingToUpload(true);
+              console.log('Final result detected, starting silence wait:', this.currentTranscript);
+            }
+          }
+        },
+        (error: string) => {
+          const store = usePhoneAIStore.getState();
+          this.clearSilenceTimer();
+          this.clearProgressTimer();
+          store.setWaitingToUpload(false);
+          store.setSilenceProgress(0);
+          this.isWaitingForSilence = false;
+          this.shouldContinueListening = false;
+          onError(error);
+        },
+        onStart,
+        () => {
+          console.log('Enhanced speech recognition ended (internal)');
+          if (this.shouldContinueListening && !this.isWaitingForSilence) {
+            console.log('Restarting speech recognition to maintain continuous listening (internal)');
+            setTimeout(() => {
+              if (this.shouldContinueListening) {
+                this.startInternalListening();
+              }
+            }, 100);
+          } else {
+            onEnd?.();
+          }
+        },
+        enhancedOptions
+      );
+    } catch (error) {
+      console.error('Error restarting speech recognition:', error);
+      onError(error instanceof Error ? error.message : 'Unknown error');
+    }
   }
 
   private resetSilenceTimer(callback: () => void): void {
@@ -103,6 +204,8 @@ export class EnhancedSpeechRecognitionService {
     
     const store = usePhoneAIStore.getState();
     const startTime = Date.now();
+    
+    console.log('Starting silence timer and progress tracking');
     
     // Start progress timer for UI updates
     this.progressTimer = setInterval(() => {
@@ -163,6 +266,8 @@ export class EnhancedSpeechRecognitionService {
   }
 
   public stopListening(): void {
+    this.shouldContinueListening = false; // Stop auto-restart
+    this.currentCallbacks = null; // Clear callbacks
     this.clearSilenceTimer();
     this.clearProgressTimer();
     this.speechService.stopListening();
@@ -175,6 +280,8 @@ export class EnhancedSpeechRecognitionService {
   }
 
   public abortListening(): void {
+    this.shouldContinueListening = false; // Stop auto-restart
+    this.currentCallbacks = null; // Clear callbacks
     this.clearSilenceTimer();
     this.clearProgressTimer();
     this.speechService.abortListening();

@@ -33,6 +33,12 @@ export class ConversationManager {
       return;
     }
 
+    // Check if already listening to prevent duplicate calls
+    if (enhancedSpeechRecognitionService.getIsListening()) {
+      console.log('Already listening, skipping duplicate start');
+      return;
+    }
+
     try {
       store.setRecording(true);
       store.setError(null);
