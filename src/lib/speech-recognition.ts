@@ -104,9 +104,10 @@ export class SpeechRecognitionService {
       return; // 静默返回而不是抛出错误
     }
 
-    if (!this.recognition) {
-      this.initializeRecognition(options);
-    }
+    // 🔧 重要修复：每次都创建新的识别实例以避免缓冲问题
+    console.log('🔄 Creating fresh SpeechRecognition instance to avoid buffer issues');
+    this.recognition = null; // 清除旧实例
+    this.initializeRecognition(options);
 
     if (!this.recognition) {
       throw new Error('Speech recognition not supported');
@@ -162,6 +163,8 @@ export class SpeechRecognitionService {
 
   public stopListening(): void {
     if (this.recognition && this.isListening) {
+      console.log('🛑 Stopping speech recognition and destroying instance');
+      
       // 清除所有事件监听器以防止残留事件
       this.recognition.onresult = null;
       this.recognition.onerror = null;
@@ -171,12 +174,17 @@ export class SpeechRecognitionService {
       this.recognition.stop();
       this.isListening = false;
       
-      console.log('🛑 Speech recognition stopped and event listeners cleared');
+      // 🔧 重要：完全销毁实例避免缓冲问题
+      this.recognition = null;
+      
+      console.log('✅ Speech recognition instance destroyed');
     }
   }
 
   public abortListening(): void {
     if (this.recognition && this.isListening) {
+      console.log('🚫 Aborting speech recognition and destroying instance');
+      
       // 清除所有事件监听器以防止残留事件
       this.recognition.onresult = null;
       this.recognition.onerror = null;
@@ -186,7 +194,10 @@ export class SpeechRecognitionService {
       this.recognition.abort();
       this.isListening = false;
       
-      console.log('🚫 Speech recognition aborted and event listeners cleared');
+      // 🔧 重要：完全销毁实例避免缓冲问题
+      this.recognition = null;
+      
+      console.log('✅ Speech recognition instance destroyed');
     }
   }
 

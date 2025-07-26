@@ -191,6 +191,10 @@ export class ConversationManager {
     const store = usePhoneAIStore.getState();
     this.stopStreamingText(); // 停止任何正在进行的流式渲染
     
+    // 🔧 重要修复：TTS开始前停止语音识别，防止录入AI声音
+    console.log('🔇 Stopping speech recognition before TTS');
+    enhancedSpeechRecognitionService.stopListening();
+    
     try {
       store.setSpeaking(true);
       store.setPlaying(true);
@@ -218,6 +222,7 @@ export class ConversationManager {
           () => ttsService.playAudio(audioBlob),
           'audio-playback'
         );
+        console.log('🎵 TTS playback completed');
       }
       
       // 确保文本流式渲染已完成
@@ -242,6 +247,14 @@ export class ConversationManager {
       this.currentAudioController = null;
       // 停止任何残留的流式文本渲染
       this.stopStreamingText();
+      
+      // 🔧 重要修复：TTS完成后，等待更长时间再重新开始监听，确保完全清理
+      console.log('🎵 TTS and streaming completed, waiting 800ms before restarting listening...');
+      setTimeout(() => {
+        if (!this.isProcessingConversation) {
+          this.continueListening();
+        }
+      }, 800);
     }
   }
 
@@ -383,15 +396,39 @@ export class ConversationManager {
   public async continueListening(): Promise<void> {
     const store = usePhoneAIStore.getState();
     
-    if (store.isCallActive && !store.isRecording && !this.isProcessingConversation && store.isMicrophoneEnabled) {
-      // Wait a moment before restarting listening
-      setTimeout(() => {
-        const currentStore = usePhoneAIStore.getState();
-        if (currentStore.isCallActive && !currentStore.isRecording && currentStore.isMicrophoneEnabled) {
-          this.startVoiceConversation();
-        }
-      }, 1000);
+    console.log('🔄 continueListening called - checking conditions:', {
+      isCallActive: store.isCallActive,
+      isRecording: store.isRecording,
+      isProcessingConversation: this.isProcessingConversation,
+      isMicrophoneEnabled: store.isMicrophoneEnabled,
+      isListening: enhancedSpeechRecognitionService.getIsListening()
+    });
+    
+    // 🔧 重要修复：增加更严格的检查，防止重复调用
+    if (!store.isCallActive || 
+        store.isRecording || 
+        this.isProcessingConversation || 
+        !store.isMicrophoneEnabled ||
+        enhancedSpeechRecognitionService.getIsListening()) {
+      console.log('⚠️ Conditions not met for continueListening, skipping');
+      return;
     }
+    
+    // Wait a moment before restarting listening
+    setTimeout(() => {
+      const currentStore = usePhoneAIStore.getState();
+      // 🔧 重复检查确保状态仍然有效
+      if (currentStore.isCallActive && 
+          !currentStore.isRecording && 
+          currentStore.isMicrophoneEnabled &&
+          !enhancedSpeechRecognitionService.getIsListening() &&
+          !this.isProcessingConversation) {
+        console.log('🎙️ Starting voice conversation after delay');
+        this.startVoiceConversation();
+      } else {
+        console.log('⚠️ Conditions changed during delay, not starting voice conversation');
+      }
+    }, 1000);
   }
 
   public toggleMicrophone(): void {

@@ -11,6 +11,7 @@ export class EnhancedSpeechRecognitionService {
   private currentCallbacks: any = null; // Store callbacks for restart
   private currentOptions: SpeechRecognitionOptions = {};
   private static instance: EnhancedSpeechRecognitionService;
+  private sessionId: string = ''; // 🔧 新增：会话ID来过滤旧结果
   
   // Configuration
   private readonly SILENCE_TIMEOUT = 4000; // 4 seconds
@@ -41,7 +42,11 @@ export class EnhancedSpeechRecognitionService {
   ): Promise<void> {
     const store = usePhoneAIStore.getState();
     
-    console.log('🎙️ Starting enhanced speech recognition - clearing all previous state');
+    // 🔧 生成新的会话ID
+    this.sessionId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+    const currentSessionId = this.sessionId;
+    
+    console.log('🎙️ Starting enhanced speech recognition - Session ID:', currentSessionId);
     
     // 强力清理所有可能的残留状态
     this.forceCleanup();
@@ -65,7 +70,18 @@ export class EnhancedSpeechRecognitionService {
 
     return this.speechService.startListening(
       (result: SpeechRecognitionResult) => {
+        // 🔧 验证会话ID，过滤旧会话的结果
+        if (this.sessionId !== currentSessionId) {
+          console.log('⚠️ Ignoring speech result from old session:', {
+            currentSession: currentSessionId,
+            resultSession: this.sessionId,
+            transcript: result.transcript
+          });
+          return;
+        }
+        
         console.log('🗣️ Speech result received:', {
+          sessionId: currentSessionId,
           transcript: result.transcript,
           isFinal: result.isFinal,
           confidence: result.confidence,
@@ -249,7 +265,10 @@ export class EnhancedSpeechRecognitionService {
     const store = usePhoneAIStore.getState();
     const startTime = Date.now();
     
-    console.log('Starting silence timer and progress tracking');
+    // 🔧 捕获当前transcript作为这次定时器的目标
+    const targetTranscript = this.currentTranscript;
+    
+    console.log('⏱️ Starting silence timer for transcript:', targetTranscript);
     
     // Start progress timer for UI updates
     this.progressTimer = setInterval(() => {
@@ -264,10 +283,22 @@ export class EnhancedSpeechRecognitionService {
     
     // Start silence timer
     this.silenceTimer = setTimeout(() => {
-      console.log('Silence timeout reached, processing transcript:', this.currentTranscript);
-      this.clearProgressTimer();
-      store.setSilenceProgress(0);
-      callback();
+      console.log('⏰ Silence timeout reached, checking transcript validity:', {
+        targetTranscript,
+        currentTranscript: this.currentTranscript,
+        isStillWaiting: this.isWaitingForSilence
+      });
+      
+      // 🔧 重要检查：只有当前transcript与目标transcript一致时才处理
+      if (this.currentTranscript === targetTranscript && this.isWaitingForSilence) {
+        this.clearProgressTimer();
+        store.setSilenceProgress(0);
+        callback();
+      } else {
+        console.log('⚠️ Transcript changed or no longer waiting, ignoring timeout');
+        this.clearProgressTimer();
+        store.setSilenceProgress(0);
+      }
     }, this.SILENCE_TIMEOUT);
   }
 
@@ -288,8 +319,15 @@ export class EnhancedSpeechRecognitionService {
   private processFinalTranscript(onFinalResult: (transcript: string) => void): void {
     const store = usePhoneAIStore.getState();
     
+    // 🔧 重要修复：增加会话验证，确保只处理当前会话的transcript
+    if (!this.isWaitingForSilence) {
+      console.log('⚠️ Not waiting for silence, ignoring stale transcript:', this.currentTranscript);
+      this.currentTranscript = '';
+      return;
+    }
+    
     if (this.currentTranscript && this.currentTranscript.length >= this.MIN_TRANSCRIPT_LENGTH) {
-      console.log('Processing final transcript:', this.currentTranscript);
+      console.log('📤 Processing final transcript:', this.currentTranscript);
       
       // Clear waiting state and progress
       store.setWaitingToUpload(false);
@@ -368,7 +406,7 @@ export class EnhancedSpeechRecognitionService {
     this.clearSilenceTimer();
     this.clearProgressTimer();
     
-    // 重置所有内部状态
+    // 🔧 重要修复：重置所有内部状态，防止残留transcript被处理
     this.currentTranscript = '';
     this.isWaitingForSilence = false;
     this.shouldContinueListening = false;
@@ -380,7 +418,7 @@ export class EnhancedSpeechRecognitionService {
     store.setWaitingToUpload(false);
     store.setSilenceProgress(0);
     
-    console.log('✅ Force cleanup completed');
+    console.log('✅ Force cleanup completed - all state cleared');
   }
 }
 
