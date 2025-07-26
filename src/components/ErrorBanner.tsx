@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertCircle, X } from 'lucide-react';
+import { CircularProgress } from './CircularProgress';
 
 interface ErrorBannerProps {
   error: string;
@@ -42,6 +43,7 @@ interface StatusIndicatorProps {
   isSpeaking?: boolean;
   isProcessing?: boolean;
   isWaitingToUpload?: boolean;
+  silenceProgress?: number;
 }
 
 export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
@@ -51,6 +53,7 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
   isSpeaking,
   isProcessing,
   isWaitingToUpload,
+  silenceProgress = 0,
 }) => {
   if (!isRecording && !isPlaying && !isLoading && !isSpeaking && !isProcessing && !isWaitingToUpload) {
     return null;
@@ -61,7 +64,7 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
   let statusColor = 'blue';
   
   if (isWaitingToUpload) {
-    statusMessage = '等待4秒后上传语音... (请保持安静)';
+    statusMessage = '请保持安静，等待语音上传...';
     statusColor = 'orange';
   } else if (isRecording) {
     statusMessage = '正在录音中...';
@@ -111,20 +114,25 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
 
   return (
     <div className={`${colors.bg} border ${colors.border} rounded-lg p-3 mb-4`}>
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-3">
         <div className="flex-shrink-0">
-          <div className={`w-2 h-2 ${colors.dot} rounded-full ${isWaitingToUpload ? 'animate-bounce' : 'animate-pulse'}`}></div>
+          {isWaitingToUpload ? (
+            <CircularProgress 
+              progress={silenceProgress} 
+              size={24}
+              strokeWidth={3}
+              showText={false}
+            />
+          ) : (
+            <div className={`w-2 h-2 ${colors.dot} rounded-full animate-pulse`}></div>
+          )}
         </div>
-        <p className={`text-sm ${colors.text}`}>
+        <p className={`text-sm ${colors.text} flex-1`}>
           {statusMessage}
         </p>
         {isWaitingToUpload && (
-          <div className="ml-auto">
-            <div className="flex space-x-1">
-              <div className="w-1 h-1 bg-orange-500 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
-              <div className="w-1 h-1 bg-orange-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
-              <div className="w-1 h-1 bg-orange-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
-            </div>
+          <div className="text-xs text-orange-600 dark:text-orange-400 font-medium">
+            {Math.round(silenceProgress)}%
           </div>
         )}
       </div>

@@ -109,13 +109,8 @@ export class ConversationManager {
         // Remove the </end> marker from the display text
         const cleanResponse = response.replace('</end>', '').trim();
         
-        // Add AI response to store
-        const aiMessage: Omit<ChatMessage, 'id' | 'timestamp'> = {
-          role: 'assistant',
-          content: cleanResponse,
-        };
-        
-        store.addMessage(aiMessage);
+        // Store the response as pending (don't display yet)
+        store.setPendingAIMessage(cleanResponse);
 
         // Convert response to speech and play
         await this.speakResponse(cleanResponse);
@@ -190,6 +185,16 @@ export class ConversationManager {
       
       // Check if we should still play (not aborted)
       if (!this.currentAudioController.signal.aborted) {
+        // Add the AI message to display when audio starts playing
+        const aiMessage: Omit<ChatMessage, 'id' | 'timestamp'> = {
+          role: 'assistant',
+          content: text,
+        };
+        store.addMessage(aiMessage);
+        
+        // Clear pending message since we're now displaying it
+        store.setPendingAIMessage(null);
+        
         await performanceMonitor.monitorAudioProcessing(
           () => ttsService.playAudio(audioBlob),
           'audio-playback'
@@ -200,6 +205,16 @@ export class ConversationManager {
       const userFriendlyError = errorHandler.getUserFriendlyMessage(error);
       errorHandler.handleError(error, 'Text-to-Speech');
       store.setError(userFriendlyError);
+      
+      // If TTS fails, still display the message
+      if (store.pendingAIMessage) {
+        const aiMessage: Omit<ChatMessage, 'id' | 'timestamp'> = {
+          role: 'assistant', 
+          content: store.pendingAIMessage,
+        };
+        store.addMessage(aiMessage);
+        store.setPendingAIMessage(null);
+      }
     } finally {
       store.setSpeaking(false);
       store.setPlaying(false);

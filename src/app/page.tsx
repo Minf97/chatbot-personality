@@ -19,6 +19,7 @@ export default function Home() {
     isProcessing,
     isCallActive,
     isWaitingToUpload,
+    silenceProgress,
     error,
     startNewConversation,
     endConversation,
@@ -101,6 +102,7 @@ export default function Home() {
               isSpeaking={isSpeaking}
               isProcessing={isProcessing}
               isWaitingToUpload={isWaitingToUpload}
+              silenceProgress={silenceProgress}
             />
           </div>
 

@@ -7,10 +7,14 @@ export interface PhoneAIState extends ConversationState {
   conversationId: string | null;
   isCallActive: boolean;
   
-  // Audio states
+  // Audio states  
   isSpeaking: boolean;
   isProcessing: boolean;
   isWaitingToUpload: boolean;
+  silenceProgress: number; // 0-100 for circular progress
+  
+  // Pending messages for delayed display
+  pendingAIMessage: string | null;
   
   // Settings
   language: string;
@@ -28,6 +32,9 @@ export interface PhoneAIState extends ConversationState {
   setSpeaking: (isSpeaking: boolean) => void;
   setProcessing: (isProcessing: boolean) => void;
   setWaitingToUpload: (isWaiting: boolean) => void;
+  setSilenceProgress: (progress: number) => void;
+  
+  setPendingAIMessage: (message: string | null) => void;
   
   setCallActive: (isActive: boolean) => void;
   setError: (error: string | null) => void;
@@ -54,6 +61,8 @@ export const usePhoneAIStore = create<PhoneAIState>()(
       isSpeaking: false,
       isProcessing: false,
       isWaitingToUpload: false,
+      silenceProgress: 0,
+      pendingAIMessage: null,
       error: null,
       
       conversationId: null,
@@ -100,6 +109,8 @@ export const usePhoneAIStore = create<PhoneAIState>()(
       setSpeaking: (isSpeaking) => set({ isSpeaking }),
       setProcessing: (isProcessing) => set({ isProcessing }),
       setWaitingToUpload: (isWaitingToUpload) => set({ isWaitingToUpload }),
+      setSilenceProgress: (silenceProgress) => set({ silenceProgress }),
+      setPendingAIMessage: (pendingAIMessage) => set({ pendingAIMessage }),
       setCallActive: (isCallActive) => set({ isCallActive }),
       setError: (error) => set({ error }),
       setLanguage: (language) => set({ language }),
@@ -125,6 +136,8 @@ export const usePhoneAIStore = create<PhoneAIState>()(
           isSpeaking: false,
           isProcessing: false,
           isWaitingToUpload: false,
+          silenceProgress: 0,
+          pendingAIMessage: null,
           error: null,
         });
       },

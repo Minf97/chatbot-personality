@@ -20,7 +20,8 @@
       "Bash(move \"phone-ai\\*\" .)",
       "Bash(robocopy:*)",
       "Bash(xcopy:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(git rm:*)"
     ],
     "deny": []
   }

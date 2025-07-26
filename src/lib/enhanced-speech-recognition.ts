@@ -4,6 +4,7 @@ import { usePhoneAIStore } from './store';
 export class EnhancedSpeechRecognitionService {
   private speechService: SpeechRecognitionService;
   private silenceTimer: NodeJS.Timeout | null = null;
+  private progressTimer: NodeJS.Timeout | null = null;
   private currentTranscript: string = '';
   private isWaitingForSilence = false;
   private static instance: EnhancedSpeechRecognitionService;
@@ -11,6 +12,7 @@ export class EnhancedSpeechRecognitionService {
   // Configuration
   private readonly SILENCE_TIMEOUT = 4000; // 4 seconds
   private readonly MIN_TRANSCRIPT_LENGTH = 2; // Minimum characters to process
+  private readonly PROGRESS_UPDATE_INTERVAL = 50; // Update progress every 50ms
 
   constructor() {
     this.speechService = SpeechRecognitionService.getInstance();
@@ -95,12 +97,29 @@ export class EnhancedSpeechRecognitionService {
   }
 
   private resetSilenceTimer(callback: () => void): void {
-    // Clear existing timer
+    // Clear existing timers
     this.clearSilenceTimer();
+    this.clearProgressTimer();
     
-    // Start new timer
+    const store = usePhoneAIStore.getState();
+    const startTime = Date.now();
+    
+    // Start progress timer for UI updates
+    this.progressTimer = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min((elapsed / this.SILENCE_TIMEOUT) * 100, 100);
+      store.setSilenceProgress(progress);
+      
+      if (progress >= 100) {
+        this.clearProgressTimer();
+      }
+    }, this.PROGRESS_UPDATE_INTERVAL);
+    
+    // Start silence timer
     this.silenceTimer = setTimeout(() => {
       console.log('Silence timeout reached, processing transcript:', this.currentTranscript);
+      this.clearProgressTimer();
+      store.setSilenceProgress(0);
       callback();
     }, this.SILENCE_TIMEOUT);
   }
@@ -112,14 +131,22 @@ export class EnhancedSpeechRecognitionService {
     }
   }
 
+  private clearProgressTimer(): void {
+    if (this.progressTimer) {
+      clearInterval(this.progressTimer);
+      this.progressTimer = null;
+    }
+  }
+
   private processFinalTranscript(onFinalResult: (transcript: string) => void): void {
     const store = usePhoneAIStore.getState();
     
     if (this.currentTranscript && this.currentTranscript.length >= this.MIN_TRANSCRIPT_LENGTH) {
       console.log('Processing final transcript:', this.currentTranscript);
       
-      // Clear waiting state
+      // Clear waiting state and progress
       store.setWaitingToUpload(false);
+      store.setSilenceProgress(0);
       this.isWaitingForSilence = false;
       
       // Process the transcript
@@ -130,26 +157,31 @@ export class EnhancedSpeechRecognitionService {
     } else {
       // No valid transcript, just clear waiting state
       store.setWaitingToUpload(false);
+      store.setSilenceProgress(0);
       this.isWaitingForSilence = false;
     }
   }
 
   public stopListening(): void {
     this.clearSilenceTimer();
+    this.clearProgressTimer();
     this.speechService.stopListening();
     
     const store = usePhoneAIStore.getState();
     store.setWaitingToUpload(false);
+    store.setSilenceProgress(0);
     this.isWaitingForSilence = false;
     this.currentTranscript = '';
   }
 
   public abortListening(): void {
     this.clearSilenceTimer();
+    this.clearProgressTimer();
     this.speechService.abortListening();
     
     const store = usePhoneAIStore.getState();
     store.setWaitingToUpload(false);
+    store.setSilenceProgress(0);
     this.isWaitingForSilence = false;
     this.currentTranscript = '';
   }
