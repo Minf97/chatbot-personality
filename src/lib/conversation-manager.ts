@@ -27,6 +27,12 @@ export class ConversationManager {
       return;
     }
 
+    // Check if microphone is enabled
+    if (!store.isMicrophoneEnabled) {
+      console.log('Microphone is disabled, skipping voice conversation start');
+      return;
+    }
+
     try {
       store.setRecording(true);
       store.setError(null);
@@ -278,14 +284,38 @@ export class ConversationManager {
   public async continueListening(): Promise<void> {
     const store = usePhoneAIStore.getState();
     
-    if (store.isCallActive && !store.isRecording && !this.isProcessingConversation) {
+    if (store.isCallActive && !store.isRecording && !this.isProcessingConversation && store.isMicrophoneEnabled) {
       // Wait a moment before restarting listening
       setTimeout(() => {
-        if (store.isCallActive && !store.isRecording) {
+        const currentStore = usePhoneAIStore.getState();
+        if (currentStore.isCallActive && !currentStore.isRecording && currentStore.isMicrophoneEnabled) {
           this.startVoiceConversation();
         }
       }, 1000);
     }
+  }
+
+  public toggleMicrophone(): void {
+    const store = usePhoneAIStore.getState();
+    const newState = !store.isMicrophoneEnabled;
+    
+    store.setMicrophoneEnabled(newState);
+    
+    if (!newState) {
+      // If disabling microphone, stop current listening
+      this.stopCurrentListening();
+    } else if (store.isCallActive && !store.isRecording && !this.isProcessingConversation) {
+      // If enabling microphone during active call, restart listening
+      setTimeout(() => this.startVoiceConversation(), 500);
+    }
+  }
+
+  private stopCurrentListening(): void {
+    enhancedSpeechRecognitionService.stopListening();
+    const store = usePhoneAIStore.getState();
+    store.setRecording(false);
+    store.setWaitingToUpload(false);
+    store.setSilenceProgress(0);
   }
 
   private async endInterviewAndSummarize(): Promise<void> {

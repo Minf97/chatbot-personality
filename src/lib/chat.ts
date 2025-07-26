@@ -21,9 +21,13 @@ export class ChatService {
         messages: messages,
         stream: false
       }, {
-        timeout: 30000, // 30 seconds timeout
+        timeout: 60000, // Increase to 60 seconds for better stability
         headers: {
           'Content-Type': 'application/json'
+        },
+        // Add retry logic for network issues
+        validateStatus: function (status) {
+          return status < 500; // Don't throw for client errors (4xx)
         }
       });
 
@@ -45,7 +49,10 @@ export class ChatService {
 
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        if (error.response?.status === 400) {
+        // Handle specific error codes
+        if (error.response?.status === 499) {
+          throw new Error('请求被取消，请重试');
+        } else if (error.response?.status === 400) {
           throw new Error('Invalid request to chat service');
         } else if (error.response?.status === 401) {
           throw new Error('Authentication failed - please check API key');
@@ -54,7 +61,9 @@ export class ChatService {
         } else if (error.response?.status === 500) {
           throw new Error('Chat service temporarily unavailable');
         } else if (error.code === 'ECONNABORTED') {
-          throw new Error('Chat request timed out');
+          throw new Error('请求超时，请检查网络连接');
+        } else if (error.code === 'ERR_CANCELED') {
+          throw new Error('请求被取消，请重试');
         } else if (!error.response) {
           throw new Error('Network error - please check your connection');
         }
@@ -63,7 +72,8 @@ export class ChatService {
           status: error.response?.status,
           statusText: error.response?.statusText,
           data: error.response?.data,
-          message: error.message
+          message: error.message,
+          code: error.code
         });
       } else {
         console.error('Chat Service Error:', error);

@@ -5,6 +5,7 @@ import { PhoneControlButton } from '@/components/PhoneControlButton';
 import { ChatMessages } from '@/components/ChatMessages';
 import { ErrorBanner, StatusIndicator } from '@/components/ErrorBanner';
 import { DebugPanel } from '@/components/DebugPanel';
+import { MicrophoneControl } from '@/components/MicrophoneControl';
 import { usePhoneAIStore } from '@/lib/store';
 import { conversationManager } from '@/lib/conversation-manager';
 import { Bot, Smartphone } from 'lucide-react';
@@ -20,6 +21,7 @@ export default function Home() {
     isCallActive,
     isWaitingToUpload,
     silenceProgress,
+    isMicrophoneEnabled,
     error,
     startNewConversation,
     endConversation,
@@ -57,16 +59,20 @@ export default function Home() {
     conversationManager.stopVoiceConversation();
   };
 
+  const handleToggleMicrophone = () => {
+    conversationManager.toggleMicrophone();
+  };
+
   const dismissError = () => {
     setError(null);
   };
 
   // Continue listening after AI response
   useEffect(() => {
-    if (isCallActive && !isRecording && !isProcessing && !isSpeaking && !isWaitingToUpload) {
+    if (isCallActive && !isRecording && !isProcessing && !isSpeaking && !isWaitingToUpload && isMicrophoneEnabled) {
       conversationManager.continueListening();
     }
-  }, [isCallActive, isRecording, isProcessing, isSpeaking, isWaitingToUpload]);
+  }, [isCallActive, isRecording, isProcessing, isSpeaking, isWaitingToUpload, isMicrophoneEnabled]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
@@ -116,7 +122,7 @@ export default function Home() {
 
           {/* Controls */}
           <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-            <div className="flex justify-center">
+            <div className="flex justify-center items-center space-x-4">
               <PhoneControlButton
                 isCallActive={isCallActive}
                 isRecording={isRecording}
@@ -126,6 +132,15 @@ export default function Home() {
                 onStartRecording={handleStartRecording}
                 onStopRecording={handleStopRecording}
               />
+              
+              {/* Microphone Control - only show during active call */}
+              {isCallActive && (
+                <MicrophoneControl
+                  isEnabled={isMicrophoneEnabled}
+                  onToggle={handleToggleMicrophone}
+                  disabled={isProcessing || isLoading}
+                />
+              )}
             </div>
           </div>
         </div>

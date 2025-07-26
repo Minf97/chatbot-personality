@@ -90,6 +90,7 @@ export class ErrorHandler {
         return 'API服务暂时不可用，请稍后重试';
       }
     }
+    console.error(error);
 
     return '发生了未知错误，请刷新页面后重试';
   }

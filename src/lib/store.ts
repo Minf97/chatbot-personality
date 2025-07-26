@@ -12,6 +12,7 @@ export interface PhoneAIState extends ConversationState {
   isProcessing: boolean;
   isWaitingToUpload: boolean;
   silenceProgress: number; // 0-100 for circular progress
+  isMicrophoneEnabled: boolean; // Control microphone during interview
   
   // Pending messages for delayed display
   pendingAIMessage: string | null;
@@ -33,6 +34,7 @@ export interface PhoneAIState extends ConversationState {
   setProcessing: (isProcessing: boolean) => void;
   setWaitingToUpload: (isWaiting: boolean) => void;
   setSilenceProgress: (progress: number) => void;
+  setMicrophoneEnabled: (enabled: boolean) => void;
   
   setPendingAIMessage: (message: string | null) => void;
   
@@ -62,6 +64,7 @@ export const usePhoneAIStore = create<PhoneAIState>()(
       isProcessing: false,
       isWaitingToUpload: false,
       silenceProgress: 0,
+      isMicrophoneEnabled: true,
       pendingAIMessage: null,
       error: null,
       
@@ -110,6 +113,7 @@ export const usePhoneAIStore = create<PhoneAIState>()(
       setProcessing: (isProcessing) => set({ isProcessing }),
       setWaitingToUpload: (isWaitingToUpload) => set({ isWaitingToUpload }),
       setSilenceProgress: (silenceProgress) => set({ silenceProgress }),
+      setMicrophoneEnabled: (isMicrophoneEnabled) => set({ isMicrophoneEnabled }),
       setPendingAIMessage: (pendingAIMessage) => set({ pendingAIMessage }),
       setCallActive: (isCallActive) => set({ isCallActive }),
       setError: (error) => set({ error }),
@@ -137,6 +141,7 @@ export const usePhoneAIStore = create<PhoneAIState>()(
           isProcessing: false,
           isWaitingToUpload: false,
           silenceProgress: 0,
+          isMicrophoneEnabled: true,
           pendingAIMessage: null,
           error: null,
         });
