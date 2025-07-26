@@ -6,10 +6,14 @@ import { performanceMonitor } from './performance-monitor';
 import { KimiMessage, ChatMessage } from '@/types';
 import { usePhoneAIStore } from './store';
 
+// 每个字符渲染的间隔时间（毫秒），调整为适合中文阅读和语音匹配的速度
+const STREAM_TYPING_INTERVAL = 50;
+
 export class ConversationManager {
   private static instance: ConversationManager;
   private isProcessingConversation = false;
   private currentAudioController: AbortController | null = null;
+  private streamingTextTimer: NodeJS.Timeout | null = null;
 
   public static getInstance(): ConversationManager {
     if (!ConversationManager.instance) {
@@ -86,6 +90,7 @@ export class ConversationManager {
   public stopVoiceConversation(): void {
     enhancedSpeechRecognitionService.stopListening();
     this.stopCurrentAudio();
+    this.stopStreamingText();
     const store = usePhoneAIStore.getState();
     store.setRecording(false);
     store.setProcessing(false);
@@ -121,11 +126,8 @@ export class ConversationManager {
         // Remove the </end> marker from the display text
         const cleanResponse = response.replace('</end>', '').trim();
         
-        // Store the response as pending (don't display yet)
-        store.setPendingAIMessage(cleanResponse);
-
-        // Convert response to speech and play
-        await this.speakResponse(cleanResponse);
+        // Start streaming the text response
+        await this.streamTextAndSpeak(cleanResponse);
 
         // If </end> marker was found, end the interview and generate summary
         if (hasEndMarker) {
@@ -180,57 +182,149 @@ export class ConversationManager {
     }
   }
 
-  private async speakResponse(text: string): Promise<void> {
+  // 新的流式渲染和语音播放方法
+  private async streamTextAndSpeak(text: string): Promise<void> {
+    if (!text || text.trim().length === 0) return;
+    
     const store = usePhoneAIStore.getState();
+    this.stopStreamingText(); // 停止任何正在进行的流式渲染
     
     try {
       store.setSpeaking(true);
       store.setPlaying(true);
 
-      // Create abort controller for audio playback
-      this.currentAudioController = new AbortController();
-
-      const audioBlob = await performanceMonitor.monitorAudioProcessing(
+      // 开始流式渲染
+      const messageId = store.startStreamingMessage('assistant');
+      
+      // 同时请求TTS音频
+      const audioPromise = performanceMonitor.monitorAudioProcessing(
         () => ttsService.textToSpeech(text),
         'text-to-speech'
       );
+
+      // 启动文本流式渲染
+      const streamTextPromise = this.streamText(text);
       
-      // Check if we should still play (not aborted)
-      if (!this.currentAudioController.signal.aborted) {
-        // Add the AI message to display when audio starts playing
-        const aiMessage: Omit<ChatMessage, 'id' | 'timestamp'> = {
-          role: 'assistant',
-          content: text,
-        };
-        store.addMessage(aiMessage);
-        
-        // Clear pending message since we're now displaying it
-        store.setPendingAIMessage(null);
-        
+      // 等待音频生成完成（不等待文本流式渲染完成）
+      this.currentAudioController = new AbortController();
+      const audioBlob = await audioPromise;
+      
+      // 音频准备好后立即播放，与文本流式渲染并行
+      if (this.currentAudioController && !this.currentAudioController.signal.aborted) {
+        // 播放音频（不等待streamText完成）
         await performanceMonitor.monitorAudioProcessing(
           () => ttsService.playAudio(audioBlob),
           'audio-playback'
         );
       }
+      
+      // 确保文本流式渲染已完成
+      await streamTextPromise;
+      
+      // 完成流式渲染，添加到消息列表
+      store.completeStreamingMessage();
 
     } catch (error) {
       const userFriendlyError = errorHandler.getUserFriendlyMessage(error);
       errorHandler.handleError(error, 'Text-to-Speech');
       store.setError(userFriendlyError);
       
-      // If TTS fails, still display the message
-      if (store.pendingAIMessage) {
-        const aiMessage: Omit<ChatMessage, 'id' | 'timestamp'> = {
-          role: 'assistant', 
-          content: store.pendingAIMessage,
-        };
-        store.addMessage(aiMessage);
-        store.setPendingAIMessage(null);
+      // 确保即使发生错误也完成流式消息
+      if (store.streamingMessage) {
+        store.completeStreamingMessage();
       }
     } finally {
       store.setSpeaking(false);
       store.setPlaying(false);
       this.currentAudioController = null;
+    }
+  }
+
+  // 流式渲染文本的辅助方法
+  private streamText(text: string): Promise<void> {
+    return new Promise<void>((resolve) => {
+      const store = usePhoneAIStore.getState();
+      let index = 0;
+      
+      // 清除任何现有的计时器
+      if (this.streamingTextTimer) {
+        clearInterval(this.streamingTextTimer);
+      }
+      
+      // 动态计算打字速度，根据文本长度优化显示体验
+      // 文本越长，打字速度越快，但有最小和最大限制
+      const textLength = text.length;
+      let typingInterval = STREAM_TYPING_INTERVAL;
+      
+      if (textLength > 200) {
+        // 对于长文本，加快速度，但不超过最小值
+        typingInterval = Math.max(20, STREAM_TYPING_INTERVAL - (textLength / 20));
+      }
+      
+      console.log(`Text length: ${textLength}, typing interval: ${typingInterval}ms`);
+      
+      // 中文标点符号列表，这些符号后会有短暂停顿
+      const pauseCharacters = ['。', '，', '；', '！', '？', '.', ',', ';', '!', '?'];
+      
+      // 设置计时器，一次渲染一个字符
+      this.streamingTextTimer = setInterval(() => {
+        if (index < text.length) {
+          const currentChar = text[index];
+          store.appendToStreamingMessage(currentChar);
+          index++;
+          
+          // 如果当前字符是标点符号，增加停顿
+          if (pauseCharacters.includes(currentChar)) {
+            // 暂时清除计时器，增加停顿
+            if (this.streamingTextTimer) {
+              clearInterval(this.streamingTextTimer);
+              
+              // 根据标点符号类型决定停顿时间
+              const pauseTime = 
+                ['。', '！', '？', '.', '!', '?'].includes(currentChar) 
+                  ? 300  // 句号等停顿长一些
+                  : 150; // 逗号等停顿短一些
+                
+              // 停顿后重新开始
+              setTimeout(() => {
+                this.streamingTextTimer = setInterval(() => {
+                  if (index < text.length) {
+                    store.appendToStreamingMessage(text[index]);
+                    index++;
+                  } else {
+                    if (this.streamingTextTimer) {
+                      clearInterval(this.streamingTextTimer);
+                      this.streamingTextTimer = null;
+                    }
+                    resolve();
+                  }
+                }, typingInterval);
+              }, pauseTime);
+            }
+          }
+        } else {
+          // 完成渲染
+          if (this.streamingTextTimer) {
+            clearInterval(this.streamingTextTimer);
+            this.streamingTextTimer = null;
+          }
+          resolve();
+        }
+      }, typingInterval);
+    });
+  }
+
+  // 停止流式文本渲染
+  private stopStreamingText(): void {
+    if (this.streamingTextTimer) {
+      clearInterval(this.streamingTextTimer);
+      this.streamingTextTimer = null;
+    }
+    
+    // 如果有未完成的流式消息，完成它
+    const store = usePhoneAIStore.getState();
+    if (store.streamingMessage && !store.streamingMessage.isComplete) {
+      store.completeStreamingMessage();
     }
   }
 
@@ -258,19 +352,12 @@ export class ConversationManager {
 
       store.setProcessing(true);
 
-      // Generate and add AI response
+      // Generate AI response
       const response = await this.generateAIResponse(text);
       
       if (response) {
-        store.addMessage({
-          role: 'assistant',
-          content: response,
-        });
-
-        // Optionally speak the response
-        if (store.isCallActive) {
-          await this.speakResponse(response);
-        }
+        // 使用流式渲染方式处理响应
+        await this.streamTextAndSpeak(response);
       }
 
     } catch (error) {
@@ -361,11 +448,11 @@ export class ConversationManager {
 
       const summaryData = await response.json();
       
-      // Add summary as a special message to the store
-      store.addMessage({
-        role: 'assistant',
-        content: `📋 **采访总结**\n\n${summaryData.summary}`,
-      });
+      // 使用流式渲染显示总结
+      const summaryContent = `📋 **采访总结**\n\n${summaryData.summary}`;
+      const messageId = store.startStreamingMessage('assistant');
+      await this.streamText(summaryContent);
+      store.completeStreamingMessage();
 
       // End the call
       store.endConversation();

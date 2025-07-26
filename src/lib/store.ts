@@ -17,6 +17,14 @@ export interface PhoneAIState extends ConversationState {
   // Pending messages for delayed display
   pendingAIMessage: string | null;
   
+  // Streaming message state
+  streamingMessage: {
+    id: string;
+    content: string;
+    role: 'user' | 'assistant';
+    isComplete: boolean;
+  } | null;
+  
   // Settings
   language: string;
   voiceId: string;
@@ -26,6 +34,11 @@ export interface PhoneAIState extends ConversationState {
   updateMessage: (id: string, updates: Partial<ChatMessage>) => void;
   removeMessage: (id: string) => void;
   clearMessages: () => void;
+  
+  // Streaming actions
+  startStreamingMessage: (role: 'user' | 'assistant') => string; // Returns message ID
+  appendToStreamingMessage: (text: string) => void;
+  completeStreamingMessage: () => void;
   
   setRecording: (isRecording: boolean) => void;
   setPlaying: (isPlaying: boolean) => void;
@@ -66,6 +79,7 @@ export const usePhoneAIStore = create<PhoneAIState>()(
       silenceProgress: 0,
       isMicrophoneEnabled: true,
       pendingAIMessage: null,
+      streamingMessage: null,
       error: null,
       
       conversationId: null,
@@ -105,6 +119,50 @@ export const usePhoneAIStore = create<PhoneAIState>()(
         set({ messages: [] });
       },
       
+      // Streaming message actions
+      startStreamingMessage: (role) => {
+        const id = generateId();
+        set({
+          streamingMessage: {
+            id,
+            role,
+            content: '',
+            isComplete: false
+          }
+        });
+        return id;
+      },
+      
+      appendToStreamingMessage: (text) => {
+        set((state) => {
+          if (!state.streamingMessage) return state;
+          return {
+            streamingMessage: {
+              ...state.streamingMessage,
+              content: state.streamingMessage.content + text
+            }
+          };
+        });
+      },
+      
+      completeStreamingMessage: () => {
+        set((state) => {
+          if (!state.streamingMessage) return state;
+          
+          const message: ChatMessage = {
+            id: state.streamingMessage.id,
+            role: state.streamingMessage.role,
+            content: state.streamingMessage.content,
+            timestamp: Date.now(),
+          };
+          
+          return {
+            messages: [...state.messages, message],
+            streamingMessage: null
+          };
+        });
+      },
+      
       // State setters
       setRecording: (isRecording) => set({ isRecording }),
       setPlaying: (isPlaying) => set({ isPlaying }),
@@ -126,6 +184,7 @@ export const usePhoneAIStore = create<PhoneAIState>()(
           conversationId: generateId(),
           isCallActive: true,
           messages: [],
+          streamingMessage: null,
           error: null,
         });
       },
@@ -143,6 +202,7 @@ export const usePhoneAIStore = create<PhoneAIState>()(
           silenceProgress: 0,
           isMicrophoneEnabled: true,
           pendingAIMessage: null,
+          streamingMessage: null,
           error: null,
         });
       },
