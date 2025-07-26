@@ -132,7 +132,15 @@ export class ConversationManager {
 
         // If </end> marker was found, end the interview and generate summary
         if (hasEndMarker) {
-          console.log('Interview end marker detected, generating summary...');
+          console.log('Interview end marker detected, stopping recording and generating summary...');
+          
+          // 🔧 重要修复：AI结束采访时立即停止录音功能
+          console.log('🛑 Interview ended by AI - stopping all recording activities');
+          enhancedSpeechRecognitionService.stopListening();
+          store.setRecording(false);
+          store.setWaitingToUpload(false);
+          store.setSilenceProgress(0);
+          
           setTimeout(() => {
             this.endInterviewAndSummarize();
           }, 1000); // Small delay to ensure TTS completes
@@ -191,6 +199,9 @@ export class ConversationManager {
     const store = usePhoneAIStore.getState();
     this.stopStreamingText(); // 停止任何正在进行的流式渲染
     
+    // 🔧 检查是否包含结束标记
+    const hasEndMarker = text.includes('</end>');
+    
     // 🔧 重要修复：TTS开始前停止语音识别，防止录入AI声音
     console.log('🔇 Stopping speech recognition before TTS');
     enhancedSpeechRecognitionService.stopListening();
@@ -248,13 +259,18 @@ export class ConversationManager {
       // 停止任何残留的流式文本渲染
       this.stopStreamingText();
       
-      // 🔧 重要修复：TTS完成后，等待更长时间再重新开始监听，确保完全清理
-      console.log('🎵 TTS and streaming completed, waiting 800ms before restarting listening...');
-      setTimeout(() => {
-        if (!this.isProcessingConversation) {
-          this.continueListening();
-        }
-      }, 800);
+      // 🔧 重要修复：如果包含结束标记，不要重新启动录音
+      if (hasEndMarker) {
+        console.log('🛑 End marker detected in TTS - not restarting listening');
+      } else {
+        // 🔧 重要修复：TTS完成后，等待更长时间再重新开始监听，确保完全清理
+        console.log('🎵 TTS and streaming completed, waiting 800ms before restarting listening...');
+        setTimeout(() => {
+          if (!this.isProcessingConversation) {
+            this.continueListening();
+          }
+        }, 800);
+      }
     }
   }
 
@@ -508,29 +524,29 @@ export class ConversationManager {
       // Upload data to database
       if (userInfo && summaryData.summary) {
         try {
+          // 只上传到 agents 表，不需要 interviews 表
+          console.log('Uploading summary to agents table');
           const uploadResponse = await fetch('/api/upload', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              table: 'interviews',
+              table: 'agents',
               data: {
-                user_name: userInfo.name,
-                user_email: userInfo.email,
-                interview_messages: JSON.stringify(interviewMessages),
-                interview_summary: summaryData.summary,
-                created_at: new Date().toISOString(),
-                message_count: interviewMessages.length
+                email: userInfo.email,
+                bg: summaryData.summary,
+                name: userInfo.name,
+                created_at: new Date().toISOString()
               }
             })
           });
 
           if (uploadResponse.ok) {
-            console.log('Interview data uploaded to database successfully');
+            console.log('Agent data uploaded to database successfully');
             result.dbUploadStatus = 'success';
           } else {
-            console.error('Failed to upload interview data to database');
+            console.error('Failed to upload agent data to database');
             result.dbUploadStatus = 'failed';
           }
         } catch (uploadError) {
@@ -596,41 +612,39 @@ export class ConversationManager {
 
       const summaryData = await response.json();
       
-      // Upload data to database
+      // 使用流式渲染显示总结
+      const summaryContent = `📋 **采访总结**\n\n${summaryData.summary}`;
+      
+      // 🔧 上传总结数据到数据库 - 使用指定的数据格式
       if (userInfo && summaryData.summary) {
         try {
-          const uploadResponse = await fetch('/api/upload', {
+          console.log('Uploading summary to database with format: { email: email, bg: summary, name: name }');
+          const summaryUploadResponse = await fetch('/api/upload', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              table: 'interviews',
+              table: 'agents', // 使用agents表
               data: {
-                user_name: userInfo.name,
-                user_email: userInfo.email,
-                interview_messages: JSON.stringify(interviewMessages),
-                interview_summary: summaryData.summary,
-                created_at: new Date().toISOString(),
-                message_count: interviewMessages.length
+                email: userInfo.email,
+                bg: summaryData.summary,
+                name: userInfo.name,
+                created_at: new Date().toISOString()
               }
             })
           });
 
-          if (uploadResponse.ok) {
-            console.log('Interview data uploaded to database successfully');
+          if (summaryUploadResponse.ok) {
+            console.log('Summary data uploaded to database successfully');
           } else {
-            console.error('Failed to upload interview data to database');
+            console.error('Failed to upload summary data to database');
           }
-        } catch (uploadError) {
-          console.error('Error uploading to database:', uploadError);
+        } catch (summaryUploadError) {
+          console.error('Error uploading summary to database:', summaryUploadError);
         }
       }
       
-      // 使用流式渲染显示总结
-      const summaryContent = `📋 **采访总结**\n\n${summaryData.summary}`;
-      // TODO: 开始上传到数据库, 将summaryData.summary 上传到数据库
-      // TODO: 数据格式是 { id: userInfo.email, bg: summaryData.summary, name: userInfo.name }
       store.startStreamingMessage('assistant');
       await this.streamText(summaryContent);
       store.completeStreamingMessage();
