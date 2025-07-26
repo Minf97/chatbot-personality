@@ -36,9 +36,9 @@ export async function POST(request: NextRequest) {
     };
 
     // console.log('TTS Request:', { 
-      text: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
-      textLength: text.length 
-    });
+    //   text: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
+    //   textLength: text.length 
+    // });
 
     const url = `https://api.minimaxi.com/v1/t2a_v2?GroupId=${groupId}`;
     const headers = {
@@ -64,10 +64,10 @@ export async function POST(request: NextRequest) {
     if (!ttsRequest.stream) {
       const responseData = await response.json();
       // console.log('TTS Non-stream Response:', {
-        hasData: !!responseData.data,
-        hasAudio: !!(responseData.data && responseData.data.audio),
-        audioLength: responseData.data?.audio?.length || 0
-      });
+      //   hasData: !!responseData.data,
+      //   hasAudio: !!(responseData.data && responseData.data.audio),
+      //   audioLength: responseData.data?.audio?.length || 0
+      // });
 
       if (!responseData.data || !responseData.data.audio) {
         console.error('No audio data in non-stream response');
@@ -113,11 +113,11 @@ export async function POST(request: NextRequest) {
               // Log the data structure for debugging
               if (process.env.NODE_ENV === 'development') {
                 // console.log('TTS Stream Data:', {
-                  hasData: !!data.data,
-                  hasAudio: !!(data.data && data.data.audio),
-                  hasExtraInfo: !!data.extra_info,
-                  audioLength: data.data?.audio?.length || 0
-                });
+                //   hasData: !!data.data,
+                //   hasAudio: !!(data.data && data.data.audio),
+                //   hasExtraInfo: !!data.extra_info,
+                //   audioLength: data.data?.audio?.length || 0
+                // });
               }
               
               if (data.data && data.data.audio && !data.extra_info) {
@@ -135,9 +135,9 @@ export async function POST(request: NextRequest) {
     }
 
     // console.log('TTS Processing Complete:', {
-      chunksCount: audioChunks.length,
-      totalBytes: audioChunks.reduce((sum, chunk) => sum + chunk.length, 0)
-    });
+    //   chunksCount: audioChunks.length,
+    //   totalBytes: audioChunks.reduce((sum, chunk) => sum + chunk.length, 0)
+    // });
 
     // Check if we have any audio data
     if (audioChunks.length === 0) {
