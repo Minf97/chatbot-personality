@@ -470,7 +470,7 @@ export class ConversationManager {
     store.setSilenceProgress(0);
   }
 
-  public async endInterviewWithResult(): Promise<any> {
+  public async endInterviewWithResult(): Promise<object> {
     const store = usePhoneAIStore.getState();
     
     try {

@@ -1,6 +1,13 @@
 import { SpeechRecognitionService, SpeechRecognitionOptions, SpeechRecognitionResult } from './speech-recognition';
 import { usePhoneAIStore } from './store';
 
+interface SpeechCallbacks {
+  onFinalResult: (transcript: string) => void;
+  onError: (error: string) => void;
+  onStart?: () => void;
+  onEnd?: () => void;
+}
+
 export class EnhancedSpeechRecognitionService {
   private speechService: SpeechRecognitionService;
   private silenceTimer: NodeJS.Timeout | null = null;
@@ -8,7 +15,7 @@ export class EnhancedSpeechRecognitionService {
   private currentTranscript: string = '';
   private isWaitingForSilence = false;
   private shouldContinueListening = false; // Track if we should restart after end
-  private currentCallbacks: any = null; // Store callbacks for restart
+  private currentCallbacks: SpeechCallbacks | null = null; // Store callbacks for restart
   private currentOptions: SpeechRecognitionOptions = {};
   private static instance: EnhancedSpeechRecognitionService;
   private sessionId: string = ''; // 🔧 新增：会话ID来过滤旧结果

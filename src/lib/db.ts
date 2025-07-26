@@ -12,7 +12,7 @@ export function getDB() {
   return pool;
 }
 
-export async function queryDB(text: string, params?: any[]) {
+export async function queryDB(text: string, params?: unknown[]) {
   const client = getDB();
   try {
     const result = await client.query(text, params);

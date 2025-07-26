@@ -49,7 +49,7 @@ export default function Home() {
   }, [isWaitingToUpload]);
 
   const [showUserInfoDialog, setShowUserInfoDialog] = useState(false);
-  const [interviewResult, setInterviewResult] = useState<any>(null);
+  const [interviewResult, setInterviewResult] = useState<object | null>(null);
   const [showResult, setShowResult] = useState(false);
 
   const handleStartCall = async () => {
