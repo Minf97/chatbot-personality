@@ -131,8 +131,66 @@ export async function POST(request: NextRequest) {
       throw new Error('No summary generated');
     }
 
+    const summary = data.choices[0].message.content;
+
+    // Generate tags from the summary
+    const tagsMessages: KimiMessage[] = [
+      {
+        role: 'system',
+        content: `请基于以下访谈总结内容，生成不超过10个简洁的标签，用来描述这个人的特征。
+
+要求：
+1. 标签应该简洁明了，每个标签1-3个字
+2. 包含但不限于：性格特征、能力特长、职业方向、兴趣爱好、价值观倾向等
+3. 必须严格基于总结内容，不能编造
+4. 只返回标签列表，用中文逗号分隔
+5. 数量控制在10个以内
+
+示例格式：技术专家,创业者,理性思考,注重细节,团队协作`
+      },
+      {
+        role: 'user',
+        content: `请基于以下访谈总结生成标签：\n\n${summary}`
+      }
+    ];
+
+    const tagsRequestBody = {
+      model: model,
+      messages: tagsMessages,
+      temperature: 0.2, // Lower temperature for consistent tagging
+      max_tokens: 200,
+      stream: false
+    };
+
+    console.log('Generating tags from summary...');
+
+    const tagsResponse = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(tagsRequestBody)
+    });
+
+    let tags: string[] = [];
+    
+    if (tagsResponse.ok) {
+      const tagsData = await tagsResponse.json();
+      if (tagsData.choices && tagsData.choices.length > 0) {
+        const tagsString = tagsData.choices[0].message.content;
+        // Parse the comma-separated tags and clean them
+        tags = tagsString.split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag.length > 0);
+        // Limit to 10 tags maximum
+        tags = tags.slice(0, 10);
+      }
+    } else {
+      console.warn('Failed to generate tags, continuing without tags');
+    }
+
     return NextResponse.json({
-      summary: data.choices[0].message.content,
+      summary: summary,
+      tags: tags,
       timestamp: new Date().toISOString(),
       messageCount: messages.length
     });

@@ -520,6 +520,9 @@ export class ConversationManager {
         timestamp: new Date().toISOString(),
         dbUploadStatus: 'pending'
       };
+
+      console.log(summaryData.tags, "summaryData.tags");
+      
       
       // Upload data to database
       if (userInfo && summaryData.summary) {
@@ -537,6 +540,7 @@ export class ConversationManager {
                 email: userInfo.email,
                 bg: summaryData.summary,
                 name: userInfo.name,
+                tags: summaryData.tags,
                 created_at: new Date().toISOString()
               }
             })
@@ -630,6 +634,7 @@ export class ConversationManager {
                 email: userInfo.email,
                 bg: summaryData.summary,
                 name: userInfo.name,
+                tags: summaryData.tags,
                 created_at: new Date().toISOString()
               }
             })
