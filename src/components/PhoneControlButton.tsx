@@ -48,24 +48,24 @@ export const PhoneControlButton: React.FC<PhoneControlButtonProps> = ({
           relative w-20 h-20 rounded-full flex items-center justify-center
           transition-all duration-300 shadow-lg
           ${isCallActive 
-            ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
-            : 'bg-green-500 hover:bg-green-600'
+            ? 'bg-black dark:bg-white animate-pulse' 
+            : 'bg-gray-800 dark:bg-gray-200'
           }
           ${disabled || isProcessing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
           hover:scale-105 active:scale-95
         `}
       >
         {isProcessing ? (
-          <Loader2 className="w-8 h-8 text-white animate-spin" />
+          <Loader2 className={`w-8 h-8 ${isCallActive ? 'text-white dark:text-black' : 'text-white dark:text-black'} animate-spin`} />
         ) : isCallActive ? (
-          <PhoneOff className="w-8 h-8 text-white" />
+          <PhoneOff className="w-8 h-8 text-white dark:text-black" />
         ) : (
-          <Phone className="w-8 h-8 text-white" />
+          <Phone className="w-8 h-8 text-white dark:text-black" />
         )}
         
         {/* Pulse animation for active call */}
         {isCallActive && !isProcessing && (
-          <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-20" />
+          <div className="absolute inset-0 rounded-full bg-black dark:bg-white animate-ping opacity-20" />
         )}
       </button>
 
@@ -90,15 +90,15 @@ export const PhoneControlButton: React.FC<PhoneControlButtonProps> = ({
             w-14 h-14 rounded-full flex items-center justify-center
             transition-all duration-300 shadow-md
             ${isRecording 
-              ? 'bg-red-500 hover:bg-red-600' 
-              : 'bg-gray-500 hover:bg-gray-600'
+              ? 'bg-black dark:bg-white' 
+              : 'bg-gray-500 dark:bg-gray-400'
             }
             ${disabled || isProcessing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
             hover:scale-105 active:scale-95
           `}
         >
           {isRecording ? (
-            <MicOff className="w-6 h-6 text-white" />
+            <MicOff className="w-6 h-6 text-white dark:text-black" />
           ) : (
             <Mic className="w-6 h-6 text-white" />
           )}
