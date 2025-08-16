@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errorData = await response.text();
       console.error('Summary API Error:', errorData);
-      throw new Error(`Summary API error: ${response.status}`);
+      throw new Error(`Summary API error: ${response.status} ${errorData}`);
     }
 
     const data = await response.json();
@@ -185,7 +185,8 @@ export async function POST(request: NextRequest) {
         tags = tags.slice(0, 10);
       }
     } else {
-      console.warn('Failed to generate tags, continuing without tags');
+      const tagsError = await tagsResponse.text();
+      console.warn('Failed to generate tags, continuing without tags:', tagsError);
     }
 
     return NextResponse.json({
@@ -200,7 +201,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         error: 'Failed to generate summary',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : String(error)
       },
       { status: 500 }
     );

@@ -66,27 +66,40 @@ export class ErrorHandler {
   public getUserFriendlyMessage(error: unknown): string {
     if (error instanceof Error) {
       // Map technical errors to user-friendly messages
-      if (error.message.includes('permission')) {
+      const message = error.message || '';
+
+      // Explicit guidance for missing credentials / configuration
+      if (
+        message.includes('未配置') ||
+        message.toLowerCase().includes('not configured') ||
+        message.includes('Kimi API') ||
+        message.includes('Minimax TTS') ||
+        message.toLowerCase().includes('credentials')
+      ) {
+        return '服务尚未配置：请在项目根目录的 .env.local 中填写 KIMI/MINIMAX 相关密钥，并重启开发服务器';
+      }
+
+      if (message.includes('permission')) {
         return '需要麦克风权限才能使用语音功能，请在浏览器设置中允许麦克风访问';
       }
       
-      if (error.message.includes('network') || error.message.includes('fetch')) {
+      if (message.includes('network') || message.includes('fetch')) {
         return '网络连接出现问题，请检查网络连接后重试';
       }
       
-      if (error.message.includes('timeout')) {
+      if (message.includes('timeout')) {
         return '请求超时，请稍后重试';
       }
       
-      if (error.message.includes('speech') || error.message.includes('recognition')) {
+      if (message.includes('speech') || message.includes('recognition')) {
         return '语音识别服务暂时不可用，请稍后重试或使用其他浏览器';
       }
       
-      if (error.message.includes('audio') || error.message.includes('media')) {
+      if (message.includes('audio') || message.includes('media')) {
         return '音频设备出现问题，请检查麦克风和扬声器设置';
       }
       
-      if (error.message.includes('API') || error.message.includes('credentials')) {
+      if (message.includes('API') || message.includes('credentials')) {
         return 'API服务暂时不可用，请稍后重试';
       }
     }

@@ -49,25 +49,45 @@ export class ChatService {
 
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        // Handle specific error codes
-        if (error.response?.status === 499) {
+        const status = error.response?.status;
+        const serverData = error.response?.data as unknown;
+        const serverMessage = typeof serverData === 'string'
+          ? serverData
+          : serverData && typeof serverData === 'object' && 'error' in serverData
+            ? String((serverData as { error?: unknown }).error)
+            : serverData && typeof serverData === 'object' && 'message' in serverData
+              ? String((serverData as { message?: unknown }).message)
+              : '';
+
+        // Handle specific error codes with clearer messages
+        if (status === 499) {
           throw new Error('请求被取消，请重试');
-        } else if (error.response?.status === 400) {
-          throw new Error('Invalid request to chat service');
-        } else if (error.response?.status === 401) {
+        }
+        if (status === 400) {
+          throw new Error(serverMessage || 'Invalid request to chat service');
+        }
+        if (status === 401) {
           throw new Error('Authentication failed - please check API key');
-        } else if (error.response?.status === 429) {
+        }
+        if (status === 429) {
           throw new Error('Rate limit exceeded - please try again later');
-        } else if (error.response?.status === 500) {
-          throw new Error('Chat service temporarily unavailable');
-        } else if (error.code === 'ECONNABORTED') {
+        }
+        if (status === 500) {
+          if (serverMessage && serverMessage.toLowerCase().includes('credentials')) {
+            throw new Error('Kimi API 未配置：请在 .env.local 中设置 KIMI_API_KEY、KIMI_BASE_URL、KIMI_MODEL 并重启服务');
+          }
+          throw new Error(serverMessage ? `Chat service temporarily unavailable: ${serverMessage}` : 'Chat service temporarily unavailable');
+        }
+        if (error.code === 'ECONNABORTED') {
           throw new Error('请求超时，请检查网络连接');
-        } else if (error.code === 'ERR_CANCELED') {
+        }
+        if (error.code === 'ERR_CANCELED') {
           throw new Error('请求被取消，请重试');
-        } else if (!error.response) {
+        }
+        if (!error.response) {
           throw new Error('Network error - please check your connection');
         }
-        
+
         console.error('Chat Service Axios Error:', {
           status: error.response?.status,
           statusText: error.response?.statusText,
@@ -78,7 +98,7 @@ export class ChatService {
       } else {
         console.error('Chat Service Error:', error);
       }
-      
+
       throw error instanceof Error ? error : new Error('Failed to get AI response');
     }
   }

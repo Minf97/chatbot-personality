@@ -1,5 +1,7 @@
+"use client";
+
 import React from 'react';
-import { AlertCircle, X } from 'lucide-react';
+import { AlertTriangle, X, Zap, Wifi, Loader2, Cpu } from 'lucide-react';
 import { CircularProgress } from './CircularProgress';
 
 interface ErrorBannerProps {
@@ -9,27 +11,27 @@ interface ErrorBannerProps {
 
 export const ErrorBanner: React.FC<ErrorBannerProps> = ({ error, onDismiss }) => {
   return (
-    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
+    <div className="bg-[--surface-1] border border-red-500/30 rounded-xl p-4 mb-4 backdrop-blur-sm">
       <div className="flex items-start">
         <div className="flex-shrink-0">
-          <AlertCircle className="h-5 w-5 text-red-400" />
+          <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
+            <AlertTriangle className="h-5 w-5 text-white" />
+          </div>
         </div>
         <div className="ml-3 flex-1">
-          <p className="text-sm text-red-800 dark:text-red-200">
+          <div className="text-xs text-red-300 font-mono mb-1">[SYSTEM_ERROR]</div>
+          <p className="text-sm text-red-100 font-mono">
             {error}
           </p>
         </div>
         <div className="ml-auto pl-3">
-          <div className="-mx-1.5 -my-1.5">
-            <button
-              type="button"
-              onClick={onDismiss}
-              className="inline-flex rounded-md bg-red-50 dark:bg-red-900/20 p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 focus:ring-offset-red-50 dark:focus:ring-offset-red-900/20"
-            >
-              <span className="sr-only">Dismiss</span>
-              <X className="h-3 w-3" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="accent-btn--quiet w-8 h-8 rounded-lg flex items-center justify-center"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </div>
@@ -59,82 +61,137 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
     return null;
   }
 
-  // Determine the status message and style
+  // Determine the status message, color, and icon
   let statusMessage = '';
-  let statusColor = 'blue';
+  let statusColor = '';
+  let StatusIcon = Zap;
   
   if (isWaitingToUpload) {
-    statusMessage = '请保持安静，等待语音上传...';
+    statusMessage = 'SILENCE DETECTED - PREPARING UPLOAD...';
     statusColor = 'orange';
+    StatusIcon = Wifi;
   } else if (isRecording) {
-    statusMessage = '正在录音中...';
+    statusMessage = 'AUDIO STREAM ACTIVE - RECORDING...';
     statusColor = 'red';
+    StatusIcon = Zap;
   } else if (isProcessing) {
-    statusMessage = '正在处理您的语音...';
+    statusMessage = 'PROCESSING NEURAL INPUT...';
     statusColor = 'blue';
+    StatusIcon = Cpu;
   } else if (isSpeaking) {
-    statusMessage = 'AI正在回复...';
+    statusMessage = 'AI CORE RESPONDING...';
     statusColor = 'green';
+    StatusIcon = Cpu;
   } else if (isPlaying) {
-    statusMessage = '正在播放音频...';
+    statusMessage = 'AUDIO OUTPUT ACTIVE...';
     statusColor = 'green';
+    StatusIcon = Wifi;
   } else if (isLoading) {
-    statusMessage = '正在加载...';
+    statusMessage = 'SYSTEM LOADING...';
     statusColor = 'blue';
+    StatusIcon = Loader2;
   }
 
-  const colorClasses = {
-    blue: {
-      bg: 'bg-blue-50 dark:bg-blue-900/20',
-      border: 'border-blue-200 dark:border-blue-800',
-      text: 'text-blue-800 dark:text-blue-200',
-      dot: 'bg-blue-500'
-    },
-    red: {
-      bg: 'bg-red-50 dark:bg-red-900/20',
-      border: 'border-red-200 dark:border-red-800',
-      text: 'text-red-800 dark:text-red-200',
-      dot: 'bg-red-500'
-    },
-    green: {
-      bg: 'bg-green-50 dark:bg-green-900/20',
-      border: 'border-green-200 dark:border-green-800',
-      text: 'text-green-800 dark:text-green-200',
-      dot: 'bg-green-500'
-    },
-    orange: {
-      bg: 'bg-orange-50 dark:bg-orange-900/20',
-      border: 'border-orange-200 dark:border-orange-800',
-      text: 'text-orange-800 dark:text-orange-200',
-      dot: 'bg-orange-500'
+  const getStatusColors = (color: string) => {
+    switch (color) {
+      case 'blue':
+        return {
+          bg: 'from-cyan-900/40 to-blue-900/40',
+          border: 'border-cyan-500/50',
+          text: 'text-cyan-100',
+          icon: 'text-cyan-400',
+          dot: 'bg-cyan-400'
+        };
+      case 'red':
+        return {
+          bg: 'from-red-900/40 to-red-800/40',
+          border: 'border-red-500/50',
+          text: 'text-red-100',
+          icon: 'text-red-400',
+          dot: 'bg-red-400'
+        };
+      case 'green':
+        return {
+          bg: 'from-green-900/40 to-emerald-900/40',
+          border: 'border-green-500/50',
+          text: 'text-green-100',
+          icon: 'text-green-400',
+          dot: 'bg-green-400'
+        };
+      case 'orange':
+        return {
+          bg: 'from-orange-900/40 to-amber-900/40',
+          border: 'border-orange-500/50',
+          text: 'text-orange-100',
+          icon: 'text-orange-400',
+          dot: 'bg-orange-400'
+        };
+      default:
+        return {
+          bg: 'from-gray-900/40 to-slate-900/40',
+          border: 'border-gray-500/50',
+          text: 'text-gray-100',
+          icon: 'text-gray-400',
+          dot: 'bg-gray-400'
+        };
     }
   };
 
-  const colors = colorClasses[statusColor as keyof typeof colorClasses];
+  const colors = getStatusColors(statusColor);
 
   return (
-    <div className={`${colors.bg} border ${colors.border} rounded-lg p-3 mb-4`}>
-      <div className="flex items-center space-x-3">
+    <div className={`bg-gradient-to-r ${colors.bg} border ${colors.border} rounded-xl p-4 mb-4 backdrop-blur-sm`}>
+      <div className="flex items-center space-x-4">
         <div className="flex-shrink-0">
-          {isWaitingToUpload ? (
-            <CircularProgress 
-              progress={silenceProgress} 
-              size={24}
-              strokeWidth={3}
-              showText={false}
-            />
-          ) : (
-            <div className={`w-2 h-2 ${colors.dot} rounded-full animate-pulse`}></div>
-          )}
+          <div className={`w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg flex items-center justify-center border ${colors.border}`}>
+            {isWaitingToUpload ? (
+              <div className="relative">
+                <CircularProgress 
+                  progress={silenceProgress} 
+                  size={24}
+                  strokeWidth={2}
+                  showText={false}
+                />
+                <Wifi className={`absolute inset-0 w-4 h-4 m-auto ${colors.icon}`} />
+              </div>
+            ) : (
+              <StatusIcon className={`w-5 h-5 ${colors.icon} ${isLoading ? 'animate-spin' : 'animate-pulse'}`} />
+            )}
+          </div>
         </div>
-        <p className={`text-sm ${colors.text} flex-1`}>
-          {statusMessage}
-        </p>
+        
+        <div className="flex-1">
+          <div className={`text-xs font-mono mb-1 ${colors.icon}`}>
+            [SYSTEM_STATUS]
+          </div>
+          <p className={`text-sm font-mono ${colors.text}`}>
+            {statusMessage}
+          </p>
+        </div>
+        
         {isWaitingToUpload && (
-          <div className="text-xs text-orange-600 dark:text-orange-400 font-medium">
-            {Math.round(silenceProgress)}%
+          <div className="text-right">
+            <div className={`text-xs font-mono ${colors.icon}`}>PROGRESS</div>
+            <div className={`text-lg font-bold ${colors.text}`}>
+              {Math.round(silenceProgress)}%
+            </div>
           </div>
         )}
+        
+        {/* Status lights */}
+        <div className="flex flex-col space-y-1">
+          {[...Array(3)].map((_, i) => (
+            <div
+              key={i}
+              className={`w-2 h-2 ${colors.dot} rounded-full transition-all duration-300`}
+              style={{
+                animationDelay: `${i * 0.2}s`,
+                animation: 'pulse 1.5s infinite',
+                opacity: i <= 2 ? 1 : 0.3
+              }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

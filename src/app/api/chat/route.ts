@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errorData = await response.text();
       console.error('Kimi API Error:', errorData);
-      throw new Error(`Kimi API error: ${response.status}`);
+      throw new Error(`Kimi API error: ${response.status} ${errorData}`);
     }
 
     if (stream) {
@@ -176,7 +176,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Chat API Error:', error);
     return NextResponse.json(
-      { error: 'Failed to generate response' },
+      { 
+        error: 'Failed to generate response',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }

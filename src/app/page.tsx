@@ -4,13 +4,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { PhoneControlButton } from '@/components/PhoneControlButton';
 import { ChatMessages } from '@/components/ChatMessages';
 import { ErrorBanner, StatusIndicator } from '@/components/ErrorBanner';
-import { DebugPanel } from '@/components/DebugPanel';
-import { MicrophoneControl } from '@/components/MicrophoneControl';
 import { UserInfoDialog } from '@/components/UserInfoDialog';
 import { usePhoneAIStore } from '@/lib/store';
 import { conversationManager } from '@/lib/conversation-manager';
 import { hasUserInfoCookie, setUserInfoCookie, UserInfo } from '@/lib/user-info';
-import { Bot, Smartphone } from 'lucide-react';
 
 export default function Home() {
   const {
@@ -23,7 +20,6 @@ export default function Home() {
     isCallActive,
     isWaitingToUpload,
     silenceProgress,
-    isMicrophoneEnabled,
     error,
     startNewConversation,
     endConversation,
@@ -51,6 +47,12 @@ export default function Home() {
   const [showUserInfoDialog, setShowUserInfoDialog] = useState(false);
   const [interviewResult, setInterviewResult] = useState<object | null>(null);
   const [showResult, setShowResult] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Fix hydration issues with dynamic content
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleStartCall = async () => {
     // Check if user info exists
@@ -84,17 +86,6 @@ export default function Home() {
     }
   };
 
-  const handleEndInterview = async () => {
-    try {
-      const result = await conversationManager.endInterviewWithResult();
-      setInterviewResult(result);
-      setShowResult(true);
-    } catch (error) {
-      console.error('Failed to end interview:', error);
-      setError('结束采访失败');
-    }
-  };
-
   const handleEndCall = () => {
     conversationManager.stopVoiceConversation();
     endConversation();
@@ -115,41 +106,100 @@ export default function Home() {
     conversationManager.stopVoiceConversation();
   };
 
-  const handleToggleMicrophone = () => {
-    conversationManager.toggleMicrophone();
-  };
-
   const dismissError = () => {
     setError(null);
   };
 
+  // Poster style: disable floating particles to keep UI clean
+  const particles: never[] = [];
+
   // Note: continueListening is now handled automatically in conversation-manager after TTS completes
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        {/* User Info Dialog */}
-        <UserInfoDialog
-          isOpen={showUserInfoDialog}
-          onSubmit={handleUserInfoSubmit}
-          onClose={() => setShowUserInfoDialog(false)}
-        />
-        
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-              Digital Interview
-            </h1>
-            <p className="text-lg text-gray-600 dark:text-gray-300">
-              与AI进行语音采访，语音停顿4秒后自动上传，AI说出&quot;结束&quot;时自动生成采访总结
-            </p>
-          </div>
+    <div className="min-h-screen relative spacecraft-console">
+      {/* Console Grid Background */}
+      <div className="console-grid"></div>
+      
+      {/* Ambient Lighting Effects */}
+      <div className="ambient-glow"></div>
 
-          {/* Main Content */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl overflow-hidden">
-            {/* Status and Error Messages */}
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              {error && <ErrorBanner error={error} onDismiss={dismissError} />}
+      {/* User Info Dialog */}
+      <UserInfoDialog
+        isOpen={showUserInfoDialog}
+        onSubmit={handleUserInfoSubmit}
+        onClose={() => setShowUserInfoDialog(false)}
+      />
+      
+      <div className="console-container max-w-7xl mx-auto px-6 py-6 relative z-10">
+        {/* Command Header */}
+        <div className="command-header mb-6">
+          <div className="header-panel">
+            <div className="status-line">
+              <span className="system-id">AGORA-NEURAL-INTERFACE-V2.1</span>
+              <span className="timestamp" suppressHydrationWarning>[{isClient ? new Date().toISOString().slice(0, 19) : ''}]</span>
+            </div>
+            <h1 className="console-title">
+              NEURAL INTERVIEW PROTOCOL
+            </h1>
+            <div className="command-prompt">
+              &gt; INITIALIZING DEEP COGNITIVE INTERFACE...
+            </div>
+            <div className="status-indicators">
+              <span className="status-badge status-green">NEURAL-LINK: READY</span>
+              <span className="status-badge status-blue">ENCRYPTION: AES-256</span>
+              <span className="status-badge status-amber">AI-CORE: STANDBY</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Console Layout */}
+        <div className="console-layout">
+          {/* Left Panel - System Diagnostics */}
+          <div className="left-panel">
+            <div className="panel-header">
+              <span className="panel-title">SYSTEM DIAGNOSTICS</span>
+            </div>
+            <div className="diagnostic-grid">
+              <div className="diagnostic-item">
+                <div className="diagnostic-label">NEURAL BUFFER</div>
+                <div className="diagnostic-bar">
+                  <div className="bar-fill" style={{ width: isCallActive ? '85%' : '12%' }}></div>
+                </div>
+                <div className="diagnostic-value">{isCallActive ? '85%' : '12%'}</div>
+              </div>
+              <div className="diagnostic-item">
+                <div className="diagnostic-label">AUDIO STREAM</div>
+                <div className="diagnostic-bar">
+                  <div className="bar-fill" style={{ width: isRecording ? '95%' : '0%' }}></div>
+                </div>
+                <div className="diagnostic-value">{isRecording ? 'ACTIVE' : 'IDLE'}</div>
+              </div>
+              <div className="diagnostic-item">
+                <div className="diagnostic-label">AI PROCESSING</div>
+                <div className="diagnostic-bar">
+                  <div className={`bar-fill ${isProcessing ? 'processing' : ''}`} style={{ width: isProcessing ? '100%' : isCallActive ? '45%' : '0%' }}></div>
+                </div>
+                <div className="diagnostic-value">{isProcessing ? 'PROC' : isCallActive ? 'RDY' : 'OFF'}</div>
+              </div>
+              <div className="diagnostic-item">
+                <div className="diagnostic-label">SYNC STATUS</div>
+                <div className="diagnostic-bar">
+                  <div className="bar-fill" style={{ width: isSpeaking ? '100%' : '25%' }}></div>
+                </div>
+                <div className="diagnostic-value">{isSpeaking ? 'TX' : 'SYNC'}</div>
+              </div>
+            </div>
+            
+            {/* Error Panel */}
+            {error && (
+              <div className="error-panel">
+                <div className="error-header">SYSTEM ALERT</div>
+                <ErrorBanner error={error} onDismiss={dismissError} />
+              </div>
+            )}
+            
+            {/* Status Indicator */}
+            <div className="status-panel">
               <StatusIndicator
                 isRecording={isRecording}
                 isPlaying={isPlaying}
@@ -160,80 +210,145 @@ export default function Home() {
                 silenceProgress={silenceProgress}
               />
             </div>
+          </div>
 
-            {/* Chat Messages */}
-            <div className="h-96 flex flex-col">
+          {/* Center Panel - Communication Interface */}
+          <div className="center-panel">
+            <div className="panel-header">
+              <span className="panel-title">NEURAL COMMUNICATION INTERFACE</span>
+              <div className="connection-status">
+                <div className={`connection-dot ${isCallActive ? 'connected' : 'disconnected'}`}></div>
+                <span>{isCallActive ? 'CONNECTED' : 'DISCONNECTED'}</span>
+              </div>
+            </div>
+            <div className="chat-container">
               <ChatMessages
                 messages={messages}
                 isLoading={isProcessing}
               />
             </div>
-
-            {/* Controls */}
-            <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900">
-              <div className="flex justify-center items-center space-x-4">
-                <PhoneControlButton
-                  isCallActive={isCallActive}
-                  isRecording={isRecording}
-                  isProcessing={isProcessing || isLoading}
-                  onStartCall={handleStartCall}
-                  onEndCall={handleEndCall}
-                  onStartRecording={handleStartRecording}
-                  onStopRecording={handleStopRecording}
-                />
-                
-                {/* Microphone Control - only show during active call */}
-                {/* {isCallActive && (
-                  <MicrophoneControl
-                    isEnabled={isMicrophoneEnabled}
-                    onToggle={handleToggleMicrophone}
-                    disabled={isProcessing || isLoading}
-                  />
-                )} */}
-                
-              </div>
-            </div>
           </div>
 
-          {/* Result Display Modal */}
+          {/* Right Panel - Control Interface */}
+          <div className="right-panel">
+            <div className="panel-header">
+              <span className="panel-title">NEURAL LINK CONTROL</span>
+            </div>
+            
+            <div className="control-section">
+              <PhoneControlButton
+                isCallActive={isCallActive}
+                isRecording={isRecording}
+                isProcessing={isProcessing || isLoading}
+                onStartCall={handleStartCall}
+                onEndCall={handleEndCall}
+                onStartRecording={handleStartRecording}
+                onStopRecording={handleStopRecording}
+              />
+            </div>
+            
+            {/* System Monitors */}
+            <div className="monitor-grid">
+              <div className="monitor-item">
+                <div className="monitor-label">AUDIO CORE</div>
+                <div className={`monitor-status ${isRecording ? 'active' : 'standby'}`}>
+                  {isRecording ? 'RECORDING' : 'STANDBY'}
+                </div>
+                <div className="monitor-indicator">
+                  <div className={`indicator-dot ${isRecording ? 'pulse-green' : 'dim'}`}></div>
+                </div>
+              </div>
+              
+              <div className="monitor-item">
+                <div className="monitor-label">AI ENGINE</div>
+                <div className={`monitor-status ${isProcessing ? 'processing' : isCallActive ? 'online' : 'offline'}`}>
+                  {isProcessing ? 'THINKING' : isCallActive ? 'ONLINE' : 'OFFLINE'}
+                </div>
+                <div className="monitor-indicator">
+                  <div className={`indicator-dot ${isProcessing ? 'pulse-yellow' : isCallActive ? 'pulse-blue' : 'dim'}`}></div>
+                </div>
+              </div>
+              
+              <div className="monitor-item">
+                <div className="monitor-label">DATA SYNC</div>
+                <div className={`monitor-status ${isSpeaking ? 'transmitting' : 'ready'}`}>
+                  {isSpeaking ? 'TRANSMIT' : 'READY'}
+                </div>
+                <div className="monitor-indicator">
+                  <div className={`indicator-dot ${isSpeaking ? 'pulse-purple' : 'dim'}`}></div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Power and Connection Bars */}
+            <div className="power-section">
+              <div className="power-label">NEURAL LINK POWER</div>
+              <div className="power-bars">
+                {[...Array(8)].map((_, i) => (
+                  <div 
+                    key={i} 
+                    className={`power-bar ${i < (isCallActive ? 7 : 2) ? 'active' : 'inactive'}`}
+                  ></div>
+                ))}
+              </div>
+              <div className="power-percentage">{isCallActive ? '87%' : '25%'}</div>
+            </div>
+          </div>
+        </div>
+
+          {/* Result Display Modal - Console Style */}
           {showResult && interviewResult && (
             <div className="fixed inset-0 z-50 flex items-center justify-center">
               {/* Overlay */}
-              <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowResult(false)} />
+              <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowResult(false)} />
               
-              {/* Modal */}
-              <div className="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl w-full max-w-4xl mx-4 p-6 max-h-[80vh] overflow-auto">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">采访结果</h2>
-                  <button
-                    onClick={() => setShowResult(false)}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                  >
-                    <span className="text-2xl">×</span>
-                  </button>
+              {/* Console Modal */}
+              <div className="relative console-modal w-full max-w-6xl mx-4 max-h-[85vh] overflow-hidden">
+                <div className="modal-header">
+                  <div className="modal-title-bar">
+                    <span className="modal-system-id">ANALYSIS-CORE-V1.0</span>
+                    <span className="modal-timestamp">[REPORT-GENERATED]</span>
+                    <button
+                      onClick={() => setShowResult(false)}
+                      className="modal-close-btn"
+                    >
+                      [X]
+                    </button>
+                  </div>
+                  <h2 className="modal-main-title">NEURAL INTERVIEW ANALYSIS REPORT</h2>
+                  <div className="modal-subtitle">&gt; COGNITIVE PATTERN ANALYSIS COMPLETE</div>
                 </div>
                 
-                <div className="bg-gray-100 dark:bg-gray-900 rounded-lg p-4 overflow-auto">
-                  <pre className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-                    {JSON.stringify(interviewResult, null, 2)}
-                  </pre>
+                <div className="modal-content">
+                  <div className="data-terminal">
+                    <div className="terminal-header">
+                      <span className="terminal-prompt">[DATA-STREAM] $&gt;</span>
+                      <span className="terminal-status">OUTPUT_FORMAT: JSON</span>
+                    </div>
+                    <div className="terminal-body">
+                      <pre className="terminal-text">
+                        {JSON.stringify(interviewResult, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="mt-4 flex justify-end">
+                <div className="modal-footer">
+                  <div className="footer-status">
+                    <span className="status-badge status-green">ANALYSIS: COMPLETE</span>
+                    <span className="status-badge status-blue">DATA: VERIFIED</span>
+                  </div>
                   <button
                     onClick={() => setShowResult(false)}
-                    className="bg-black hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-200 text-white dark:text-black px-6 py-2 rounded-lg"
+                    className="footer-close-btn"
                   >
-                    关闭
+                    [CLOSE TERMINAL]
                   </button>
                 </div>
               </div>
             </div>
           )}
-        </div>
-        
-        {/* Debug Panel */}
-        {/* <DebugPanel /> */}
       </div>
+    </div>
   );
 }

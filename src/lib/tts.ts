@@ -65,13 +65,32 @@ export class TTSService {
       });
 
       if (axios.isAxiosError(error)) {
-        if (error.response?.status === 400) {
-          throw new Error('Invalid text for speech synthesis');
-        } else if (error.response?.status === 500) {
-          throw new Error('TTS service temporarily unavailable');
-        } else if (error.code === 'ECONNABORTED') {
+        const status = error.response?.status;
+        const serverData = error.response?.data as unknown;
+        const serverMessage = typeof serverData === 'string'
+          ? serverData
+          : serverData && typeof serverData === 'object' && 'error' in serverData
+            ? String((serverData as { error?: unknown }).error)
+            : serverData && typeof serverData === 'object' && 'message' in serverData
+              ? String((serverData as { message?: unknown }).message)
+              : '';
+
+        if (status === 400) {
+          throw new Error(serverMessage || 'Invalid text for speech synthesis');
+        }
+        if (status === 401) {
+          throw new Error('TTS authentication failed - please check API key');
+        }
+        if (status === 500) {
+          if (serverMessage && serverMessage.toLowerCase().includes('credentials')) {
+            throw new Error('Minimax TTS 未配置：请在 .env.local 中设置 MINIMAX_API_KEY、MINIMAX_GROUP_ID 并重启服务');
+          }
+          throw new Error(serverMessage ? `TTS service temporarily unavailable: ${serverMessage}` : 'TTS service temporarily unavailable');
+        }
+        if (error.code === 'ECONNABORTED') {
           throw new Error('TTS request timed out');
-        } else if (!error.response) {
+        }
+        if (!error.response) {
           throw new Error('Network error - please check your connection');
         }
       }

@@ -1,5 +1,7 @@
+"use client";
+
 import React from "react";
-import { Mic, MicOff, Phone, PhoneOff, Loader2 } from "lucide-react";
+import { Power, PowerOff, Loader2, Radio, Wifi } from "lucide-react";
 
 interface PhoneControlButtonProps {
   isCallActive: boolean;
@@ -39,93 +41,79 @@ export const PhoneControlButton: React.FC<PhoneControlButtonProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center space-y-4">
+    <div className="flex flex-col items-center space-y-6">
       {/* Main Call Button */}
-      <button
-        onClick={handleMainButtonClick}
-        disabled={disabled || isProcessing}
-        className={`
-          relative w-20 h-20 rounded-full flex items-center justify-center
-          transition-all duration-300
-          ${
-            isCallActive
-              ? " dark:bg-white animate-pulse border-[2px] border-[#6a7282]"
-              : "border-[2px] border-[#6a7282] dark:bg-gray-200"
-          }
-          ${
-            disabled || isProcessing
-              ? "opacity-50 cursor-not-allowed"
-              : "cursor-pointer"
-          }
-          hover:scale-105 active:scale-95
-        `}
-      >
-        {isProcessing ? (
-          <Loader2
-            className={`w-8 h-8 ${
-              isCallActive
-                ? "text-[#6a7282] dark:text-black"
-                : "text-[#6a7282] dark:text-black"
-            } animate-spin`}
-          />
-        ) : isCallActive ? (
-          <PhoneOff className="w-8 h-8 text-[#6a7282] dark:text-black" />
-        ) : (
-          <Phone className="w-8 h-8 text-[#6a7282] dark:text-black" />
-        )}
-
-        {/* Pulse animation for active call */}
-        {isCallActive && !isProcessing && (
-          <div className="absolute inset-0 rounded-full bg-black dark:bg-white animate-ping opacity-20" />
-        )}
-      </button>
+      <div className="relative">
+        <button
+          onClick={handleMainButtonClick}
+          disabled={disabled || isProcessing}
+          className={`
+            relative w-24 h-24 rounded-full flex items-center justify-center
+            transition-transform duration-200
+            ${disabled || isProcessing ? 'opacity-60 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}
+            ${isCallActive ? 'bg-red-500' : 'bg-[--accent-olive]'}
+            border border-[--border-soft]
+            shadow-[0_10px_30px_rgba(0,0,0,0.35)]
+          `}
+        >
+          {isProcessing ? (
+            <Loader2 className="w-10 h-10 text-white animate-spin" />
+          ) : isCallActive ? (
+            <PowerOff className="w-10 h-10 text-white" />
+          ) : (
+            <Power className="w-10 h-10 text-white" />
+          )}
+        </button>
+      </div>
 
       {/* Call Status */}
       <div className="text-center">
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <p className="text-lg font-bold font-mono tracking-widest text-[--text-muted]">
           {isProcessing
-            ? "处理中..."
+            ? 'INITIALIZING'
             : isCallActive
-            ? "通话中"
-            : "点击开始通话"}
+            ? 'NEURAL LINK ACTIVE'
+            : 'ACTIVATE NEURAL LINK'}
         </p>
+        <div className="flex justify-center space-x-2 mt-2">
+          {[...Array(3)].map((_, i) => (
+            <div
+              key={i}
+              className={`w-2 h-2 rounded-full ${isCallActive ? 'bg-[--accent-olive]' : isProcessing ? 'bg-[--accent-amber]' : 'bg-gray-600'}`}
+              style={{ opacity: 0.9 }}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Microphone Button (only visible during active call) */}
       {isCallActive && (
-        <button
-          onClick={handleMicButtonClick}
-          disabled={disabled || isProcessing}
-          className={`
-            w-14 h-14 rounded-full flex items-center justify-center
-            transition-all duration-300
-            ${
-              isRecording
-                ? " border-[2px] border-[#6a7282] dark:bg-white"
-                : "border-[2px] border-[#6a7282] dark:bg-gray-400"
-            }
-            ${
-              disabled || isProcessing
-                ? "opacity-50 cursor-not-allowed"
-                : "cursor-pointer"
-            }
-            hover:scale-105 active:scale-95
-          `}
-        >
-          {isRecording ? (
-            <MicOff className="w-6 h-6 text-[#6a7282] dark:text-black" />
-          ) : (
-            <Mic className="w-6 h-6 text-[#6a7282] dark:text-black" />
-          )}
-        </button>
-      )}
+        <div className="flex flex-col items-center space-y-3">
+          <button
+            onClick={handleMicButtonClick}
+            disabled={disabled || isProcessing}
+            className={`
+              relative w-16 h-16 rounded-xl flex items-center justify-center
+              transition-transform duration-200
+              ${disabled || isProcessing ? 'opacity-60 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}
+              ${isRecording ? 'bg-[--accent-olive]' : 'bg-[--surface-2]'}
+              border border-[--border-soft]
+              shadow-[0_6px_20px_rgba(0,0,0,0.35)]
+            `}
+          >
+            {isRecording ? (
+              <Radio className="w-6 h-6 text-white" />
+            ) : (
+              <Wifi className="w-6 h-6 text-[--text-muted]" />
+            )}
+          </button>
 
-      {/* Recording Status */}
-      {isCallActive && (
-        <div className="text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {isRecording ? "正在录音..." : "点击录音"}
-          </p>
+          {/* Recording Status */}
+          <div className="text-center">
+            <p className="text-sm font-mono text-[--text-muted]">
+              {isRecording ? 'AUDIO STREAM ACTIVE' : 'READY TO TRANSMIT'}
+            </p>
+          </div>
         </div>
       )}
     </div>
